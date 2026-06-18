@@ -79,11 +79,12 @@ test('alur admin PIN, word bank, scoring persentase, dan penggambar otomatis', {
   assert.equal(authenticatedScreen.ok, true);
   assert.equal(authenticatedScreen.data.isHost, true);
 
-  async function startAdminRound() {
+  async function startAdminRound(event = 'admin:start-countdown') {
     let secretWord = null;
     adminPlayer.client.once('drawer:secret-word', ({ word }) => { secretWord = word; });
-    const started = await emitAck(admin, 'admin:start-countdown', { roomId, hostToken });
+    const started = await emitAck(admin, event, { roomId, hostToken });
     assert.equal(started.ok, true);
+    assert.equal(started.data.state.status, 'countdown');
     assert.equal(started.data.state.drawer.id, adminPlayer.playerId);
     assert.equal(wordBank.has(started.data.state.secretWord), true);
     assert.equal((await emitAck(admin, 'admin:start-round', { roomId, hostToken })).ok, true);
@@ -108,8 +109,9 @@ test('alur admin PIN, word bank, scoring persentase, dan penggambar otomatis', {
   const afterSkip = await emitAck(admin, 'admin:resume', { roomId, hostToken });
   assert.equal(afterSkip.data.state.players.find((item) => item.id === budi.playerId).score, 0);
 
-  assert.equal((await emitAck(admin, 'admin:next-round', { roomId, hostToken })).ok, true);
-  const secondWord = await startAdminRound();
+  const secondCountdown = waitForState(screen, 'countdown');
+  const secondWord = await startAdminRound('admin:next-round');
+  assert.equal((await secondCountdown).currentRound, 2);
   assert.notEqual(secondWord, firstWord);
   assert.equal((await emitAck(budi.client, 'player:submit-answer', { roomId, playerId: budi.playerId, playerToken: budi.playerToken, answer: secondWord })).data.points, 100);
   assert.equal((await emitAck(admin, 'admin:stop-round', { roomId, hostToken })).ok, true);
@@ -117,8 +119,7 @@ test('alur admin PIN, word bank, scoring persentase, dan penggambar otomatis', {
   assert.equal(halfResult.data.state.result.drawer.percentage, 50);
   assert.equal(halfResult.data.state.result.drawer.score, 50);
 
-  assert.equal((await emitAck(admin, 'admin:next-round', { roomId, hostToken })).ok, true);
-  const thirdWord = await startAdminRound();
+  const thirdWord = await startAdminRound('admin:next-round');
   const roundEnded = waitForState(screen, 'round_result');
   assert.equal((await emitAck(budi.client, 'player:submit-answer', { roomId, playerId: budi.playerId, playerToken: budi.playerToken, answer: thirdWord })).data.points, 100);
   assert.equal((await emitAck(sari.client, 'player:submit-answer', { roomId, playerId: sari.playerId, playerToken: sari.playerToken, answer: thirdWord.toUpperCase() })).data.points, 90);

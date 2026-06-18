@@ -250,6 +250,56 @@ async function createGameServer(options = {}) {
     }
   }
 
+  async function startCountdown(room) {
+    if (!room || !canTransition(room.status, 'countdown')) {
+      return { ok: false, error: 'Ronde belum dapat dimulai.' };
+    }
+    const onlinePlayers = store.roomPlayers(room.id).filter((player) => player.isOnline);
+    if (onlinePlayers.length < 2) return { ok: false, error: 'Minimal 2 peserta online untuk memulai.' };
+    const drawer = selectDrawer(onlinePlayers, room.drawerMode, room.lastDrawerId);
+    if (!drawer && room.drawerMode === 'admin') {
+      return { ok: false, error: 'Mode Admin membutuhkan peserta online dengan username admin.' };
+    }
+    if (!drawer) return { ok: false, error: 'Tidak ada penggambar yang dapat dipilih.' };
+    const eligibleGuesserIds = onlinePlayers.filter((player) => player.id !== drawer.id).map((player) => player.id);
+    if (!eligibleGuesserIds.length) return { ok: false, error: 'Minimal satu penebak online diperlukan.' };
+    const word = takeWordFromBank(room);
+    if (!word) return { ok: false, error: 'Word bank kosong.' };
+
+    room.status = 'countdown';
+    room.currentRound += 1;
+    room.drawerId = drawer.id;
+    room.lastDrawerId = drawer.id;
+    room.currentWord = word;
+    room.startedAt = null;
+    room.countdownEndsAt = new Date(Date.now() + countdownMs).toISOString();
+    room.endsAt = null;
+    store.data.rounds.push({
+      id: `round_${nanoid(10)}`,
+      roomId: room.id,
+      roundNumber: room.currentRound,
+      drawerId: room.drawerId,
+      word,
+      status: 'countdown',
+      correctOrder: [],
+      eligibleGuesserIds,
+      drawerScore: 0,
+      drawerCorrectPercentage: 0,
+      bonusAwarded: false,
+      startedAt: null,
+      endedAt: null
+    });
+    canvasHistory.set(room.id, []);
+    await store.save();
+    const phaseTimer = setTimeout(() => beginDrawing(room.id), countdownMs);
+    runtime.set(room.id, { phaseTimer, ticker: null });
+    io.to(`room:${room.id}`).emit('canvas:clear');
+    io.to(`room:${room.id}`).emit('game:countdown', { endsAt: room.countdownEndsAt, currentRound: room.currentRound });
+    emitSecret(room);
+    await broadcastRoom(room.id);
+    return { ok: true, data: { state: adminState(room) } };
+  }
+
   async function beginDrawing(roomId) {
     const room = store.room(roomId);
     if (!room || room.status !== 'countdown' || !canTransition('countdown', 'drawing')) return;
@@ -449,49 +499,7 @@ async function createGameServer(options = {}) {
       const room = authHost(payload.roomId, payload.hostToken, payload.adminPin);
       if (!room) return acknowledge(ack, { ok: false, error: 'Akses host ditolak.' });
       if (room.status !== 'waiting') return acknowledge(ack, { ok: false, error: 'Ronde sebelumnya belum selesai.' });
-      const onlinePlayers = store.roomPlayers(room.id).filter((player) => player.isOnline);
-      if (onlinePlayers.length < 2) return acknowledge(ack, { ok: false, error: 'Minimal 2 peserta online untuk memulai.' });
-      const drawer = selectDrawer(onlinePlayers, room.drawerMode, room.lastDrawerId);
-      if (!drawer && room.drawerMode === 'admin') {
-        return acknowledge(ack, { ok: false, error: 'Mode Admin membutuhkan peserta online dengan username admin.' });
-      }
-      if (!drawer) return acknowledge(ack, { ok: false, error: 'Tidak ada penggambar yang dapat dipilih.' });
-      const eligibleGuesserIds = onlinePlayers.filter((player) => player.id !== drawer.id).map((player) => player.id);
-      if (!eligibleGuesserIds.length) return acknowledge(ack, { ok: false, error: 'Minimal satu penebak online diperlukan.' });
-      const word = takeWordFromBank(room);
-      if (!word) return acknowledge(ack, { ok: false, error: 'Word bank kosong.' });
-      if (!canTransition(room.status, 'countdown')) return acknowledge(ack, { ok: false, error: 'Transisi ronde tidak valid.' });
-      room.status = 'countdown';
-      room.currentRound += 1;
-      room.drawerId = drawer.id;
-      room.lastDrawerId = drawer.id;
-      room.currentWord = word;
-      room.countdownEndsAt = new Date(Date.now() + countdownMs).toISOString();
-      room.endsAt = null;
-      const round = {
-        id: `round_${nanoid(10)}`,
-        roomId: room.id,
-        roundNumber: room.currentRound,
-        drawerId: room.drawerId,
-        word,
-        status: 'countdown',
-        correctOrder: [],
-        eligibleGuesserIds,
-        drawerScore: 0,
-        drawerCorrectPercentage: 0,
-        bonusAwarded: false,
-        startedAt: null,
-        endedAt: null
-      };
-      store.data.rounds.push(round);
-      canvasHistory.set(room.id, []);
-      await store.save();
-      const phaseTimer = setTimeout(() => beginDrawing(room.id), countdownMs);
-      runtime.set(room.id, { phaseTimer, ticker: null });
-      io.to(`room:${room.id}`).emit('game:countdown', { endsAt: room.countdownEndsAt, currentRound: room.currentRound });
-      emitSecret(room);
-      acknowledge(ack, { ok: true, data: { state: adminState(room) } });
-      await broadcastRoom(room.id);
+      return acknowledge(ack, await startCountdown(room));
     });
 
     socket.on('admin:start-round', async (payload = {}, ack) => {
@@ -526,13 +534,7 @@ async function createGameServer(options = {}) {
         await store.save();
         io.to(`room:${room.id}`).emit('game:finished');
       } else {
-        room.status = 'waiting';
-        room.currentWord = null;
-        room.drawerId = null;
-        room.startedAt = null;
-        canvasHistory.set(room.id, []);
-        await store.save();
-        io.to(`room:${room.id}`).emit('canvas:clear');
+        return acknowledge(ack, await startCountdown(room));
       }
       acknowledge(ack, { ok: true, data: { state: adminState(room) } });
       await broadcastRoom(room.id);
