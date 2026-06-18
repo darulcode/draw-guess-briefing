@@ -28,7 +28,7 @@ npm start
 4. Tekan **Start Ronde**. Server mengambil kata dari word bank dan menentukan penggambar sesuai mode room.
 5. Setelah setiap ronde, layar menampilkan hasil dan **Leaderboard Terbaru**. Klik **Ronde Berikutnya** untuk melanjutkan; pada ronde terakhir tombol ini menampilkan podium final.
 
-Browser pembuat room menyimpan token host dan langsung menampilkan panel kontrol di halaman `/screen/:roomId`. Perangkat lain yang membuka URL screen akan melihat tombol **Aktifkan Kontrol Host**; masukkan PIN admin room (`1234` secara default) untuk menampilkan Start/Stop/Skip/Lanjut. Sebelum PIN benar, perangkat tersebut tetap menjadi projector publik tanpa akses kontrol atau data rahasia. URL lama `/admin/room/:roomId` otomatis dialihkan ke halaman screen terpadu.
+Browser pembuat room menyimpan token host dan langsung menampilkan satu tombol kontrol di pojok kanan atas halaman `/screen/:roomId`. Tombol tersebut bertuliskan **Start Ronde** saat game belum dimulai, disembunyikan ketika ronde berlangsung, lalu berubah menjadi **Ronde Berikutnya** atau **Tampilkan Juara** setelah hasil ronde. Perangkat lain yang membuka URL screen akan melihat tombol **Aktifkan Kontrol Host** dan dapat memasukkan PIN admin room (`1234` secara default). Sebelum PIN benar, perangkat tersebut tetap menjadi projector publik tanpa akses kontrol atau data rahasia. URL lama `/admin/room/:roomId` otomatis dialihkan ke halaman screen terpadu.
 
 ### Mode Penggambar
 
@@ -52,4 +52,4 @@ npm test         # unit dan integration test
 - Kata rahasia hanya dikirim ke socket penggambar.
 - Leaderboard tidak dikirim ke pemain atau projector selama ronde aktif.
 - Semua event host, pemain, jawaban, dan gambar divalidasi lagi oleh server.
-- Tombol **Skip** membatalkan seluruh poin ronde tersebut. Tombol **Stop** mempertahankan poin dan menghitung skor persentase penggambar.
+- Ronde berakhir otomatis ketika waktu habis atau semua penebak menjawab benar, lalu host melanjutkan menggunakan satu tombol di pojok kanan atas.

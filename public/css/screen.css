@@ -15,12 +15,7 @@ body.screen-body { background: radial-gradient(circle at 15% 10%, #41d7e7 0%, tr
 .screen-metric strong { display: block; margin-top: 5px; font: 700 clamp(2rem, 5vw, 4rem) 'Fredoka'; }
 .screen-result { width: min(1000px, 100%); margin: 0 auto; }
 .screen-body .podium-title, .screen-body .podium-name { color: white; }
-.screen-host-controls { position: fixed; z-index: 45; left: 20px; right: 20px; bottom: 18px; display: flex; align-items: center; justify-content: space-between; gap: 18px; padding: 13px 16px; border: 1px solid rgba(255,255,255,.22); border-radius: 20px; color: white; background: rgba(23,21,43,.88); box-shadow: 0 18px 55px rgba(0,0,0,.3); backdrop-filter: blur(18px); }
-.screen-host-meta { display: flex; align-items: center; gap: 12px; min-width: 0; }
-.screen-host-meta strong { white-space: nowrap; }
-.screen-control-error { color: #ffb4c0; font-size: .86rem; font-weight: 700; }
-.screen-control-buttons { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 9px; }
-.screen-body.host-screen .screen-page { padding-bottom: 120px; }
+.screen-primary-action { min-width: 150px; }
 .screen-pin-modal { position: fixed; z-index: 90; inset: 0; display: grid; place-items: center; padding: 20px; background: rgba(23,21,43,.78); backdrop-filter: blur(12px); }
 .screen-pin-card { width: min(440px, 100%); }
 .screen-pin-card h2 { margin: 16px 0 4px; }
@@ -29,9 +24,5 @@ body.screen-body { background: radial-gradient(circle at 15% 10%, #41d7e7 0%, tr
   .screen-page { width: min(100% - 22px, 1500px); }
   .screen-waiting, .screen-game-grid { grid-template-columns: 1fr; }
   .screen-side { grid-template-columns: repeat(3, 1fr); }
-  .screen-host-controls { position: sticky; left: auto; right: auto; bottom: 8px; margin: 0 10px 10px; align-items: stretch; flex-direction: column; }
-  .screen-control-buttons { justify-content: stretch; }
-  .screen-control-buttons .btn { flex: 1; }
-  .screen-host-meta { flex-wrap: wrap; }
   .screen-top-actions { align-items: flex-end; flex-direction: column; }
 }
