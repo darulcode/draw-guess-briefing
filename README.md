@@ -23,10 +23,12 @@ npm start
 ## Alur Penggunaan
 
 1. Buka `/admin`, isi nama sesi, ronde, durasi, dan mode penggambar.
-2. Bagikan QR atau Room ID dari dashboard host.
-3. Buka projector melalui tombol **Buka Projector**.
-4. Tekan **Start**. Server mengambil kata dari word bank dan menentukan penggambar sesuai mode room.
-5. Setelah hasil tampil, klik **Ronde Berikutnya**. Pada ronde terakhir tombol ini menampilkan podium final.
+2. Setelah room dibuat, browser langsung masuk ke layar Host + Projector.
+3. Bagikan QR, Room ID, atau salin link dari layar tersebut.
+4. Tekan **Start Ronde**. Server mengambil kata dari word bank dan menentukan penggambar sesuai mode room.
+5. Setelah setiap ronde, layar menampilkan hasil dan **Leaderboard Terbaru**. Klik **Ronde Berikutnya** untuk melanjutkan; pada ronde terakhir tombol ini menampilkan podium final.
+
+Browser pembuat room menyimpan token host dan menampilkan panel kontrol di halaman `/screen/:roomId`. Perangkat lain yang membuka URL screen tanpa token hanya mendapatkan tampilan projector publik, tanpa tombol kontrol atau data rahasia. URL lama `/admin/room/:roomId` otomatis dialihkan ke halaman screen terpadu.
 
 ### Mode Penggambar
 

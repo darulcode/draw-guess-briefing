@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="id">
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Projector | Draw & Guess</title><link rel="stylesheet" href="/public/css/base.css"><link rel="stylesheet" href="/public/css/screen.css"></head>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Game Room | Draw & Guess</title><link rel="stylesheet" href="/public/css/base.css"><link rel="stylesheet" href="/public/css/screen.css"></head>
 <body class="screen-body">
   <main class="screen-page">
     <header class="screen-topbar"><div class="brand"><span class="brand-mark">D!</span><h1 id="screenTitle" class="screen-title">Draw & Guess</h1></div><span id="screenStatus" class="eyebrow">Waiting room</span></header>
@@ -8,6 +8,7 @@
     <section id="screenGame" class="screen-game-grid hidden"><div class="canvas-frame screen-canvas locked"><canvas id="screenCanvas"></canvas></div><aside class="screen-side"><div class="screen-metric"><span>Ronde</span><strong id="screenRound">1 / 5</strong></div><div class="screen-metric"><span>Penggambar</span><strong id="screenDrawer">-</strong></div><div class="screen-metric"><span>Sudah benar</span><strong id="screenCorrect">0</strong></div><div id="screenTimer" class="timer">--:--</div></aside></section>
     <section id="screenResult" class="screen-result hidden"></section><section id="screenFinal" class="screen-result hidden center"></section>
   </main>
+  <section id="screenHostControls" class="screen-host-controls hidden" aria-label="Kontrol host"><div class="screen-host-meta"><span class="pill">Host control</span><strong id="screenHostMode">Peserta acak</strong><span id="screenControlError" class="screen-control-error"></span></div><div class="screen-control-buttons"><button id="screenCopyLink" class="btn ghost small">Salin Link</button><button id="screenStart" class="btn success">Start Ronde</button><button id="screenStop" class="btn danger small">Stop</button><button id="screenSkip" class="btn ghost small">Skip</button><button id="screenNext" class="btn secondary">Ronde Berikutnya</button><button id="screenReset" class="btn danger small">Reset</button></div></section>
   <div id="screenCountdown" class="countdown-overlay hidden"><div id="screenCountdownNumber" class="countdown-number">3</div></div><canvas id="confettiCanvas" class="confetti-canvas"></canvas><div id="toast" class="toast"></div>
   <script src="/socket.io/socket.io.js"></script><script src="/public/js/common.js"></script><script src="/public/js/canvas.js"></script><script src="/public/js/confetti.js"></script><script src="/public/js/screen.js"></script>
 </body>

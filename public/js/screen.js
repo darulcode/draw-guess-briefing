@@ -1,6 +1,8 @@
 const socket = io();
 const roomId = GameUI.roomIdFromPath();
+const hostToken = localStorage.getItem(`drawguess_host_${roomId}`);
 let state = null;
+let isHost = false;
 let stopTimer = () => {};
 let stopCountdown = () => {};
 let previousStatus = '';
@@ -8,6 +10,21 @@ const canvas = new RealtimeCanvas(document.getElementById('screenCanvas'));
 
 function show(view) {
   for (const id of ['screenWaiting', 'screenGame', 'screenResult', 'screenFinal']) document.getElementById(id).classList.toggle('hidden', id !== view);
+}
+
+function renderHostControls() {
+  const controls = document.getElementById('screenHostControls');
+  controls.classList.toggle('hidden', !isHost);
+  document.body.classList.toggle('host-screen', isHost);
+  if (!isHost || !state) return;
+  const active = state.status === 'countdown' || state.status === 'drawing';
+  const hasResult = state.status === 'round_result';
+  document.getElementById('screenHostMode').textContent = state.drawerMode === 'admin' ? 'Mode Admin' : 'Mode Manual · Acak';
+  document.getElementById('screenStart').disabled = state.status !== 'waiting';
+  document.getElementById('screenStop').disabled = !active;
+  document.getElementById('screenSkip').disabled = !active;
+  document.getElementById('screenNext').disabled = !hasResult;
+  document.getElementById('screenNext').textContent = state.currentRound >= state.maxRound ? 'Tampilkan Juara' : 'Ronde Berikutnya';
 }
 
 function render(next) {
@@ -36,12 +53,14 @@ function render(next) {
     document.getElementById('screenFinal').innerHTML = GameUI.podiumHtml(state.leaderboard);
     if (previousStatus !== 'finished') Confetti.burst(4200, 280);
   }
+  renderHostControls();
   previousStatus = state.status;
 }
 
 socket.on('connect', async () => {
-  const response = await GameUI.socketAck(socket, 'screen:watch', { roomId });
+  const response = await GameUI.socketAck(socket, 'screen:watch', { roomId, hostToken });
   if (!response?.ok) { GameUI.toast(response?.error || 'Room tidak ditemukan.', 'error'); return; }
+  isHost = response.data.isHost;
   canvas.load(response.data.canvasHistory); render(response.data.state);
 });
 socket.on('room:updated', render);
@@ -49,3 +68,23 @@ socket.on('canvas:draw-start', (stroke) => canvas.apply(stroke));
 socket.on('canvas:draw-move', (stroke) => canvas.apply(stroke));
 socket.on('canvas:draw-end', (stroke) => canvas.apply(stroke));
 socket.on('canvas:clear', () => canvas.clear());
+
+async function hostAction(event, confirmation) {
+  if (!isHost) return;
+  if (confirmation && !confirm(confirmation)) return;
+  const error = document.getElementById('screenControlError');
+  error.textContent = '';
+  const response = await GameUI.socketAck(socket, event, { roomId, hostToken });
+  if (!response?.ok) error.textContent = response?.error || 'Aksi gagal.';
+}
+
+document.getElementById('screenCopyLink').addEventListener('click', async () => {
+  if (!state?.joinUrl) return;
+  await navigator.clipboard.writeText(state.joinUrl);
+  GameUI.toast('Link join disalin.');
+});
+document.getElementById('screenStart').addEventListener('click', () => hostAction('admin:start-countdown'));
+document.getElementById('screenStop').addEventListener('click', () => hostAction('admin:stop-round', 'Hentikan ronde dan hitung hasil sekarang?'));
+document.getElementById('screenSkip').addEventListener('click', () => hostAction('admin:skip-round', 'Lewati ronde dan batalkan seluruh poin ronde ini?'));
+document.getElementById('screenNext').addEventListener('click', () => hostAction('admin:next-round'));
+document.getElementById('screenReset').addEventListener('click', () => hostAction('admin:reset-game', 'Reset seluruh ronde dan skor? Peserta tetap berada di room.'));

@@ -48,6 +48,9 @@ test('alur admin PIN, word bank, scoring persentase, dan penggambar otomatis', {
   const created = await emitAck(admin, 'admin:create-room', { name: 'Mode Admin', maxRound: 3, duration: 30, drawerMode: 'admin', adminPin: '1234' });
   assert.equal(created.ok, true);
   const { roomId, hostToken } = created.data;
+  const legacyAdminPage = await fetch(`${url}/admin/room/${roomId}`, { redirect: 'manual' });
+  assert.equal(legacyAdminPage.status, 302);
+  assert.equal(legacyAdminPage.headers.get('location'), `/screen/${roomId}`);
 
   const adminPlayerClient = await connect(url); clients.push(adminPlayerClient);
   const wrongPin = await emitAck(adminPlayerClient, 'player:join', { roomId, name: 'admin', adminPin: '9999' });
@@ -66,7 +69,13 @@ test('alur admin PIN, word bank, scoring persentase, dan penggambar otomatis', {
   const budi = await join(budiClient, 'Budi');
   const sari = await join(sariClient, 'Sari');
   const screen = await connect(url); clients.push(screen);
-  assert.equal((await emitAck(screen, 'screen:watch', { roomId })).ok, true);
+  const publicScreen = await emitAck(screen, 'screen:watch', { roomId });
+  assert.equal(publicScreen.ok, true);
+  assert.equal(publicScreen.data.isHost, false);
+  const hostScreen = await connect(url); clients.push(hostScreen);
+  const authenticatedScreen = await emitAck(hostScreen, 'screen:watch', { roomId, hostToken });
+  assert.equal(authenticatedScreen.ok, true);
+  assert.equal(authenticatedScreen.data.isHost, true);
 
   async function startAdminRound() {
     let secretWord = null;

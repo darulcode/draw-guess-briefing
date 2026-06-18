@@ -30,5 +30,5 @@ form.addEventListener('submit', async (event) => {
     return;
   }
   localStorage.setItem(`drawguess_host_${response.data.roomId}`, response.data.hostToken);
-  location.href = `/admin/room/${response.data.roomId}`;
+  location.href = `/screen/${response.data.roomId}`;
 });

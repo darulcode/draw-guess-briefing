@@ -91,7 +91,7 @@ async function createGameServer(options = {}) {
   const view = (name) => (_req, res) => res.sendFile(path.join(root, 'views', name));
   app.get('/', view('index.html'));
   app.get('/admin', view('admin.html'));
-  app.get('/admin/room/:roomId', view('admin-room.html'));
+  app.get('/admin/room/:roomId', (req, res) => res.redirect(`/screen/${req.params.roomId}`));
   app.get('/join/:roomId', view('join.html'));
   app.get('/play/:roomId', view('play.html'));
   app.get('/screen/:roomId', view('screen.html'));
@@ -389,8 +389,10 @@ async function createGameServer(options = {}) {
     socket.on('screen:watch', (payload = {}, ack) => {
       const room = store.room(payload.roomId);
       if (!room) return acknowledge(ack, { ok: false, error: 'Room tidak ditemukan.' });
+      const isHost = Boolean(authHost(payload.roomId, payload.hostToken));
       attachSocket(socket, 'screen', room.id);
-      return acknowledge(ack, { ok: true, data: { state: screenState(room), canvasHistory: canvasHistory.get(room.id) || [] } });
+      socket.data.isHost = isHost;
+      return acknowledge(ack, { ok: true, data: { state: screenState(room), canvasHistory: canvasHistory.get(room.id) || [], isHost } });
     });
 
     socket.on('player:join', async (payload = {}, ack) => {
