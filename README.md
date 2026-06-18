@@ -28,7 +28,7 @@ npm start
 4. Tekan **Start Ronde**. Server mengambil kata dari word bank dan menentukan penggambar sesuai mode room.
 5. Setelah setiap ronde, layar menampilkan hasil dan **Leaderboard Terbaru**. Klik **Ronde Berikutnya** untuk melanjutkan; pada ronde terakhir tombol ini menampilkan podium final.
 
-Browser pembuat room menyimpan token host dan menampilkan panel kontrol di halaman `/screen/:roomId`. Perangkat lain yang membuka URL screen tanpa token hanya mendapatkan tampilan projector publik, tanpa tombol kontrol atau data rahasia. URL lama `/admin/room/:roomId` otomatis dialihkan ke halaman screen terpadu.
+Browser pembuat room menyimpan token host dan langsung menampilkan panel kontrol di halaman `/screen/:roomId`. Perangkat lain yang membuka URL screen akan melihat tombol **Aktifkan Kontrol Host**; masukkan PIN admin room (`1234` secara default) untuk menampilkan Start/Stop/Skip/Lanjut. Sebelum PIN benar, perangkat tersebut tetap menjadi projector publik tanpa akses kontrol atau data rahasia. URL lama `/admin/room/:roomId` otomatis dialihkan ke halaman screen terpadu.
 
 ### Mode Penggambar
 

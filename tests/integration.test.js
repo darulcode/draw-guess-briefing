@@ -72,6 +72,8 @@ test('alur admin PIN, word bank, scoring persentase, dan penggambar otomatis', {
   const publicScreen = await emitAck(screen, 'screen:watch', { roomId });
   assert.equal(publicScreen.ok, true);
   assert.equal(publicScreen.data.isHost, false);
+  assert.equal((await emitAck(screen, 'screen:authenticate-host', { roomId, adminPin: '0000' })).ok, false);
+  assert.equal((await emitAck(screen, 'screen:authenticate-host', { roomId, adminPin: '1234' })).data.isHost, true);
   const hostScreen = await connect(url); clients.push(hostScreen);
   const authenticatedScreen = await emitAck(hostScreen, 'screen:watch', { roomId, hostToken });
   assert.equal(authenticatedScreen.ok, true);
@@ -132,13 +134,12 @@ test('alur admin PIN, word bank, scoring persentase, dan penggambar otomatis', {
   const manualRoom = await emitAck(admin, 'admin:create-room', { name: 'Mode Manual', maxRound: 1, duration: 30, drawerMode: 'manual' });
   assert.equal(manualRoom.ok, true);
   const manualRoomId = manualRoom.data.roomId;
-  const manualHostToken = manualRoom.data.hostToken;
   const linaClient = await connect(url); clients.push(linaClient);
   const rakaClient = await connect(url); clients.push(rakaClient);
   const lina = await emitAck(linaClient, 'player:join', { roomId: manualRoomId, name: 'Lina' });
   const raka = await emitAck(rakaClient, 'player:join', { roomId: manualRoomId, name: 'Raka' });
   assert.equal(lina.ok && raka.ok, true);
-  const manualStart = await emitAck(admin, 'admin:start-countdown', { roomId: manualRoomId, hostToken: manualHostToken });
+  const manualStart = await emitAck(admin, 'admin:start-countdown', { roomId: manualRoomId, adminPin: '1234' });
   assert.equal(manualStart.ok, true);
   assert.equal([lina.data.playerId, raka.data.playerId].includes(manualStart.data.state.drawer.id), true);
   assert.equal(wordBank.has(manualStart.data.state.secretWord), true);

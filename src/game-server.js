@@ -80,7 +80,7 @@ async function createGameServer(options = {}) {
   const baseUrl = configuredBase || lanUrls[0] || `http://localhost:${port}`;
   const joinUrl = (roomId) => `${baseUrl}/join/${roomId}`;
 
-  app.use('/public', express.static(path.join(root, 'public'), { maxAge: options.test ? 0 : '1h' }));
+  app.use('/public', express.static(path.join(root, 'public'), { maxAge: 0, etag: true }));
   app.get('/health', (_req, res) => res.json({ ok: true, rooms: store.data.rooms.length }));
   app.get('/api/rooms/:roomId/qr', async (req, res) => {
     if (!store.room(req.params.roomId)) return res.status(404).json({ error: 'Room tidak ditemukan.' });
@@ -318,9 +318,9 @@ async function createGameServer(options = {}) {
     return true;
   }
 
-  function authHost(roomId, token) {
+  function authHost(roomId, token, adminPin) {
     const room = store.room(roomId);
-    return room && safeTokenEquals(token, room.hostTokenHash) ? room : null;
+    return room && (safeTokenEquals(token, room.hostTokenHash) || safeTokenEquals(adminPin, room.adminPinHash)) ? room : null;
   }
 
   function authPlayer(roomId, playerId, token) {
@@ -380,7 +380,7 @@ async function createGameServer(options = {}) {
     });
 
     socket.on('admin:resume', (payload = {}, ack) => {
-      const room = authHost(payload.roomId, payload.hostToken);
+      const room = authHost(payload.roomId, payload.hostToken, payload.adminPin);
       if (!room) return acknowledge(ack, { ok: false, error: 'Token host tidak valid.' });
       attachSocket(socket, 'admin', room.id);
       return acknowledge(ack, { ok: true, data: { state: adminState(room), canvasHistory: canvasHistory.get(room.id) || [] } });
@@ -389,10 +389,17 @@ async function createGameServer(options = {}) {
     socket.on('screen:watch', (payload = {}, ack) => {
       const room = store.room(payload.roomId);
       if (!room) return acknowledge(ack, { ok: false, error: 'Room tidak ditemukan.' });
-      const isHost = Boolean(authHost(payload.roomId, payload.hostToken));
+      const isHost = Boolean(authHost(payload.roomId, payload.hostToken, payload.adminPin));
       attachSocket(socket, 'screen', room.id);
       socket.data.isHost = isHost;
       return acknowledge(ack, { ok: true, data: { state: screenState(room), canvasHistory: canvasHistory.get(room.id) || [], isHost } });
+    });
+
+    socket.on('screen:authenticate-host', (payload = {}, ack) => {
+      const room = authHost(payload.roomId, null, payload.adminPin);
+      if (!room) return acknowledge(ack, { ok: false, error: 'PIN host salah.' });
+      socket.data.isHost = true;
+      return acknowledge(ack, { ok: true, data: { isHost: true } });
     });
 
     socket.on('player:join', async (payload = {}, ack) => {
@@ -439,7 +446,7 @@ async function createGameServer(options = {}) {
     });
 
     socket.on('admin:start-countdown', async (payload = {}, ack) => {
-      const room = authHost(payload.roomId, payload.hostToken);
+      const room = authHost(payload.roomId, payload.hostToken, payload.adminPin);
       if (!room) return acknowledge(ack, { ok: false, error: 'Akses host ditolak.' });
       if (room.status !== 'waiting') return acknowledge(ack, { ok: false, error: 'Ronde sebelumnya belum selesai.' });
       const onlinePlayers = store.roomPlayers(room.id).filter((player) => player.isOnline);
@@ -488,28 +495,28 @@ async function createGameServer(options = {}) {
     });
 
     socket.on('admin:start-round', async (payload = {}, ack) => {
-      const room = authHost(payload.roomId, payload.hostToken);
+      const room = authHost(payload.roomId, payload.hostToken, payload.adminPin);
       if (!room || room.status !== 'countdown') return acknowledge(ack, { ok: false, error: 'Countdown tidak aktif.' });
       await beginDrawing(room.id);
       return acknowledge(ack, { ok: true });
     });
 
     socket.on('admin:stop-round', async (payload = {}, ack) => {
-      const room = authHost(payload.roomId, payload.hostToken);
+      const room = authHost(payload.roomId, payload.hostToken, payload.adminPin);
       if (!room) return acknowledge(ack, { ok: false, error: 'Akses host ditolak.' });
       const ended = await endRound(room.id, 'finished');
       return acknowledge(ack, ended ? { ok: true } : { ok: false, error: 'Tidak ada ronde aktif.' });
     });
 
     socket.on('admin:skip-round', async (payload = {}, ack) => {
-      const room = authHost(payload.roomId, payload.hostToken);
+      const room = authHost(payload.roomId, payload.hostToken, payload.adminPin);
       if (!room) return acknowledge(ack, { ok: false, error: 'Akses host ditolak.' });
       const ended = await endRound(room.id, 'skipped');
       return acknowledge(ack, ended ? { ok: true } : { ok: false, error: 'Tidak ada ronde aktif.' });
     });
 
     socket.on('admin:next-round', async (payload = {}, ack) => {
-      const room = authHost(payload.roomId, payload.hostToken);
+      const room = authHost(payload.roomId, payload.hostToken, payload.adminPin);
       if (!room) return acknowledge(ack, { ok: false, error: 'Akses host ditolak.' });
       if (room.status !== 'round_result') return acknowledge(ack, { ok: false, error: 'Hasil ronde belum tersedia.' });
       if (room.currentRound >= room.maxRound) {
@@ -532,7 +539,7 @@ async function createGameServer(options = {}) {
     });
 
     socket.on('admin:reset-game', async (payload = {}, ack) => {
-      const room = authHost(payload.roomId, payload.hostToken);
+      const room = authHost(payload.roomId, payload.hostToken, payload.adminPin);
       if (!room) return acknowledge(ack, { ok: false, error: 'Akses host ditolak.' });
       clearRuntime(room.id);
       room.status = 'waiting';

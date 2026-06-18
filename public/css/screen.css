@@ -1,6 +1,7 @@
 body.screen-body { background: radial-gradient(circle at 15% 10%, #41d7e7 0%, transparent 28%), radial-gradient(circle at 87% 8%, #ffd84d 0%, transparent 22%), linear-gradient(145deg, #7156f3, #24174e 68%); }
 .screen-page { width: min(1500px, calc(100% - 48px)); padding: 28px 0; }
 .screen-topbar { display: flex; justify-content: space-between; align-items: center; color: white; margin-bottom: 18px; }
+.screen-top-actions { display: flex; align-items: center; gap: 10px; }
 .screen-title { font-size: clamp(1.5rem, 3vw, 2.7rem); margin: 0; }
 .screen-canvas { aspect-ratio: 16/8.5; max-height: 68vh; }
 .screen-waiting { display: grid; grid-template-columns: .75fr 1.25fr; gap: 40px; align-items: center; min-height: 75vh; }
@@ -20,6 +21,9 @@ body.screen-body { background: radial-gradient(circle at 15% 10%, #41d7e7 0%, tr
 .screen-control-error { color: #ffb4c0; font-size: .86rem; font-weight: 700; }
 .screen-control-buttons { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 9px; }
 .screen-body.host-screen .screen-page { padding-bottom: 120px; }
+.screen-pin-modal { position: fixed; z-index: 90; inset: 0; display: grid; place-items: center; padding: 20px; background: rgba(23,21,43,.78); backdrop-filter: blur(12px); }
+.screen-pin-card { width: min(440px, 100%); }
+.screen-pin-card h2 { margin: 16px 0 4px; }
 
 @media (max-width: 850px) {
   .screen-page { width: min(100% - 22px, 1500px); }
@@ -29,4 +33,5 @@ body.screen-body { background: radial-gradient(circle at 15% 10%, #41d7e7 0%, tr
   .screen-control-buttons { justify-content: stretch; }
   .screen-control-buttons .btn { flex: 1; }
   .screen-host-meta { flex-wrap: wrap; }
+  .screen-top-actions { align-items: flex-end; flex-direction: column; }
 }

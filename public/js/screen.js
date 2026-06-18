@@ -1,6 +1,8 @@
 const socket = io();
 const roomId = GameUI.roomIdFromPath();
 const hostToken = localStorage.getItem(`drawguess_host_${roomId}`);
+const screenPinKey = `drawguess_screen_pin_${roomId}`;
+let screenPin = sessionStorage.getItem(screenPinKey) || '';
 let state = null;
 let isHost = false;
 let stopTimer = () => {};
@@ -15,6 +17,7 @@ function show(view) {
 function renderHostControls() {
   const controls = document.getElementById('screenHostControls');
   controls.classList.toggle('hidden', !isHost);
+  document.getElementById('screenUnlock').classList.toggle('hidden', isHost);
   document.body.classList.toggle('host-screen', isHost);
   if (!isHost || !state) return;
   const active = state.status === 'countdown' || state.status === 'drawing';
@@ -58,7 +61,7 @@ function render(next) {
 }
 
 socket.on('connect', async () => {
-  const response = await GameUI.socketAck(socket, 'screen:watch', { roomId, hostToken });
+  const response = await GameUI.socketAck(socket, 'screen:watch', { roomId, hostToken, adminPin: screenPin });
   if (!response?.ok) { GameUI.toast(response?.error || 'Room tidak ditemukan.', 'error'); return; }
   isHost = response.data.isHost;
   canvas.load(response.data.canvasHistory); render(response.data.state);
@@ -74,7 +77,7 @@ async function hostAction(event, confirmation) {
   if (confirmation && !confirm(confirmation)) return;
   const error = document.getElementById('screenControlError');
   error.textContent = '';
-  const response = await GameUI.socketAck(socket, event, { roomId, hostToken });
+  const response = await GameUI.socketAck(socket, event, { roomId, hostToken, adminPin: screenPin });
   if (!response?.ok) error.textContent = response?.error || 'Aksi gagal.';
 }
 
@@ -88,3 +91,23 @@ document.getElementById('screenStop').addEventListener('click', () => hostAction
 document.getElementById('screenSkip').addEventListener('click', () => hostAction('admin:skip-round', 'Lewati ronde dan batalkan seluruh poin ronde ini?'));
 document.getElementById('screenNext').addEventListener('click', () => hostAction('admin:next-round'));
 document.getElementById('screenReset').addEventListener('click', () => hostAction('admin:reset-game', 'Reset seluruh ronde dan skor? Peserta tetap berada di room.'));
+
+document.getElementById('screenUnlock').addEventListener('click', () => {
+  document.getElementById('screenPinModal').classList.remove('hidden');
+  document.getElementById('screenHostPin').focus();
+});
+document.getElementById('screenPinCancel').addEventListener('click', () => document.getElementById('screenPinModal').classList.add('hidden'));
+document.getElementById('screenPinForm').addEventListener('submit', async (event) => {
+  event.preventDefault();
+  const pin = document.getElementById('screenHostPin').value;
+  const error = document.getElementById('screenPinError');
+  error.textContent = '';
+  const response = await GameUI.socketAck(socket, 'screen:authenticate-host', { roomId, adminPin: pin });
+  if (!response?.ok) { error.textContent = response?.error || 'PIN host salah.'; return; }
+  screenPin = pin;
+  sessionStorage.setItem(screenPinKey, pin);
+  isHost = true;
+  document.getElementById('screenPinModal').classList.add('hidden');
+  renderHostControls();
+  GameUI.toast('Kontrol host aktif.');
+});
