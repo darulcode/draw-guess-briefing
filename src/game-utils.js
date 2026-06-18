@@ -26,8 +26,27 @@ function getPointsByRank(rank) {
   return points[rank - 1] || 10;
 }
 
-function getDrawerBonus(correctCount) {
-  return Math.min(Math.max(Number(correctCount) || 0, 0) * 5, 50);
+function getDrawerScore(correctCount, totalGuessers, maxPoints = 100) {
+  const total = Math.max(Number(totalGuessers) || 0, 0);
+  if (!total) return 0;
+  const correct = Math.min(Math.max(Number(correctCount) || 0, 0), total);
+  return Math.round((correct / total) * Math.max(Number(maxPoints) || 0, 0));
+}
+
+function isAdminUsername(name) {
+  return normalizeAnswer(name) === 'admin';
+}
+
+function selectDrawer(players, mode, previousDrawerId = null, random = Math.random) {
+  if (mode === 'admin') return players.find((player) => isAdminUsername(player.name)) || null;
+  let candidates = [...players];
+  if (candidates.length > 1 && previousDrawerId) {
+    const withoutPrevious = candidates.filter((player) => player.id !== previousDrawerId);
+    if (withoutPrevious.length) candidates = withoutPrevious;
+  }
+  if (!candidates.length) return null;
+  const index = Math.min(Math.floor(Math.max(0, random()) * candidates.length), candidates.length - 1);
+  return candidates[index];
 }
 
 function hashToken(token) {
@@ -67,12 +86,14 @@ function sanitizeStroke(type, payload = {}) {
 module.exports = {
   ROOM_STATES,
   canTransition,
-  getDrawerBonus,
+  getDrawerScore,
   getPointsByRank,
   hashToken,
+  isAdminUsername,
   leaderboard,
   normalizeAnswer,
   safeTokenEquals,
   sanitizeStroke,
+  selectDrawer,
   validateName
 };

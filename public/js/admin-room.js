@@ -3,18 +3,13 @@ const roomId = GameUI.roomIdFromPath();
 const hostToken = localStorage.getItem(`drawguess_host_${roomId}`);
 let state = null;
 let stopTimer = () => {};
-let initializedDuration = false;
 
 function setHidden(id, hidden) { document.getElementById(id).classList.toggle('hidden', hidden); }
 
 function renderPlayers(players = []) {
   const list = document.getElementById('playerList');
-  const select = document.getElementById('drawerSelect');
-  const selected = select.value;
   document.getElementById('playerCount').textContent = `${players.length} orang`;
-  list.innerHTML = players.length ? players.map((player, index) => `<li class="list-item" style="animation-delay:${index * 35}ms"><span class="avatar">${GameUI.escapeHtml(player.name.charAt(0).toUpperCase())}</span><span class="grow"><strong>${GameUI.escapeHtml(player.name)}</strong><br><small class="muted">${player.score} poin</small></span><span class="online-dot ${player.isOnline ? 'on' : ''}" title="${player.isOnline ? 'Online' : 'Offline'}"></span></li>`).join('') : '<li class="empty">Belum ada peserta.</li>';
-  select.innerHTML = '<option value="">Pilih peserta...</option>' + players.map((player) => `<option value="${player.id}">${GameUI.escapeHtml(player.name)}</option>`).join('');
-  if (players.some((player) => player.id === selected)) select.value = selected;
+  list.innerHTML = players.length ? players.map((player, index) => `<li class="list-item" style="animation-delay:${index * 35}ms"><span class="avatar">${GameUI.escapeHtml(player.name.charAt(0).toUpperCase())}</span><span class="grow"><strong>${GameUI.escapeHtml(player.name)}</strong> ${player.isAdminUser ? '<span class="pill">Admin</span>' : ''}<br><small class="muted">${player.score} poin</small></span><span class="online-dot ${player.isOnline ? 'on' : ''}" title="${player.isOnline ? 'Online' : 'Offline'}"></span></li>`).join('') : '<li class="empty">Belum ada peserta.</li>';
 }
 
 function renderAnswers(answers = []) {
@@ -38,7 +33,11 @@ function render(next) {
   renderPlayers(state.players);
   renderAnswers(state.answers);
   document.getElementById('adminLeaderboard').innerHTML = GameUI.leaderboardHtml(state.leaderboard);
-  if (!initializedDuration) { document.getElementById('roundDuration').value = String(state.duration); initializedDuration = true; }
+  const adminMode = state.drawerMode === 'admin';
+  document.getElementById('drawerModeMetric').textContent = adminMode ? 'Admin tetap' : 'Peserta acak';
+  document.getElementById('drawerModeHelp').textContent = adminMode
+    ? 'Akun dengan username admin akan menjadi penggambar pada setiap ronde.'
+    : 'Saat Start ditekan, server memilih satu peserta online secara acak.';
 
   const active = state.status === 'countdown' || state.status === 'drawing';
   const result = state.status === 'round_result';
@@ -47,10 +46,6 @@ function render(next) {
   document.getElementById('skipRound').disabled = !active;
   document.getElementById('nextRound').disabled = !result;
   document.getElementById('nextRound').textContent = state.currentRound >= state.maxRound ? 'Tampilkan Juara' : 'Ronde Berikutnya';
-  document.getElementById('drawerSelect').disabled = state.status !== 'waiting';
-  document.getElementById('secretWord').disabled = state.status !== 'waiting';
-  document.getElementById('roundDuration').disabled = state.status !== 'waiting';
-  document.getElementById('randomWord').disabled = state.status !== 'waiting';
   const preview = document.getElementById('secretPreview');
   preview.classList.toggle('hidden', !state.secretWord || !active);
   preview.textContent = state.secretWord ? `Kata: ${state.secretWord.toUpperCase()}` : '';
@@ -75,22 +70,10 @@ document.getElementById('copyLink').addEventListener('click', async () => {
   GameUI.toast('Link join disalin.');
 });
 
-document.getElementById('randomWord').addEventListener('click', async () => {
-  const response = await GameUI.socketAck(socket, 'admin:random-word', { roomId, hostToken });
-  if (response?.ok) document.getElementById('secretWord').value = response.data.word;
-  else GameUI.toast(response?.error || 'Gagal memilih kata.', 'error');
-});
-
 document.getElementById('startRound').addEventListener('click', async () => {
   const error = document.getElementById('controlError'); error.textContent = '';
-  const response = await GameUI.socketAck(socket, 'admin:start-countdown', {
-    roomId, hostToken,
-    drawerId: document.getElementById('drawerSelect').value,
-    word: document.getElementById('secretWord').value,
-    duration: document.getElementById('roundDuration').value
-  });
+  const response = await GameUI.socketAck(socket, 'admin:start-countdown', { roomId, hostToken });
   if (!response?.ok) error.textContent = response?.error || 'Ronde gagal dimulai.';
-  else document.getElementById('secretWord').value = '';
 });
 
 async function adminAction(event, confirmation) {

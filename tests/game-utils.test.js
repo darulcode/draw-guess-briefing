@@ -2,13 +2,15 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const {
   canTransition,
-  getDrawerBonus,
+  getDrawerScore,
   getPointsByRank,
   hashToken,
+  isAdminUsername,
   leaderboard,
   normalizeAnswer,
   safeTokenEquals,
   sanitizeStroke,
+  selectDrawer,
   validateName
 } = require('../src/game-utils');
 
@@ -28,10 +30,18 @@ test('poin mengikuti urutan dan rank sepuluh ke atas mendapat 10', () => {
   assert.deepEqual([1, 2, 3, 9, 10, 20].map(getPointsByRank), [100, 90, 80, 20, 10, 10]);
 });
 
-test('bonus penggambar adalah lima per jawaban dengan batas 50', () => {
-  assert.equal(getDrawerBonus(0), 0);
-  assert.equal(getDrawerBonus(5), 25);
-  assert.equal(getDrawerBonus(15), 50);
+test('poin penggambar mengikuti persentase benar dengan maksimum 100', () => {
+  assert.equal(getDrawerScore(0, 4), 0);
+  assert.equal(getDrawerScore(2, 4), 50);
+  assert.equal(getDrawerScore(4, 4), 100);
+  assert.equal(getDrawerScore(3, 0), 0);
+});
+
+test('mode admin memilih username admin dan mode manual mengacak peserta', () => {
+  const players = [{ id: 'a', name: 'Admin' }, { id: 'b', name: 'Budi' }, { id: 'c', name: 'Sari' }];
+  assert.equal(isAdminUsername(' ADMIN '), true);
+  assert.equal(selectDrawer(players, 'admin').id, 'a');
+  assert.equal(selectDrawer(players, 'manual', 'a', () => 0).id, 'b');
 });
 
 test('state machine hanya menerima transisi yang diizinkan', () => {

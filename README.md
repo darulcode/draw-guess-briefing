@@ -22,13 +22,20 @@ npm start
 
 ## Alur Penggunaan
 
-1. Buka `/admin`, isi nama sesi, ronde, dan durasi.
+1. Buka `/admin`, isi nama sesi, ronde, durasi, dan mode penggambar.
 2. Bagikan QR atau Room ID dari dashboard host.
 3. Buka projector melalui tombol **Buka Projector**.
-4. Pilih penggambar dan kata, lalu mulai ronde.
+4. Tekan **Start**. Server mengambil kata dari word bank dan menentukan penggambar sesuai mode room.
 5. Setelah hasil tampil, klik **Ronde Berikutnya**. Pada ronde terakhir tombol ini menampilkan podium final.
 
-Token host dan sesi pemain disimpan di `localStorage`. Dashboard host hanya dapat dikendalikan dari browser pembuat room. Data game tersimpan di `data/db.json`.
+### Mode Penggambar
+
+- **Manual**: host menekan Start lalu server memilih satu peserta online secara acak. Jika memungkinkan, penggambar tidak sama dengan ronde sebelumnya.
+- **Admin**: peserta dengan username `admin` selalu menjadi penggambar. Username ini wajib memakai PIN room; PIN default adalah `1234`.
+- Kata rahasia selalu dipilih otomatis dari `data/words.json` dan tidak diulang sampai seluruh word bank telah digunakan.
+- Poin penggambar adalah persentase penebak yang benar dikali 100. Contoh: 2 dari 4 benar menghasilkan 50 poin, dan semua benar menghasilkan 100 poin.
+
+Token host dan sesi pemain disimpan di `localStorage`. Dashboard host hanya dapat dikendalikan dari browser pembuat room. Data runtime tersimpan lokal di `data/db.json` dan tidak ikut Git; server membuat file tersebut otomatis bila belum ada.
 
 ## Perintah
 
@@ -43,4 +50,4 @@ npm test         # unit dan integration test
 - Kata rahasia hanya dikirim ke socket penggambar.
 - Leaderboard tidak dikirim ke pemain atau projector selama ronde aktif.
 - Semua event host, pemain, jawaban, dan gambar divalidasi lagi oleh server.
-- Tombol **Skip** membatalkan seluruh poin ronde tersebut. Tombol **Stop** mempertahankan poin dan menghitung bonus penggambar.
+- Tombol **Skip** membatalkan seluruh poin ronde tersebut. Tombol **Stop** mempertahankan poin dan menghitung skor persentase penggambar.

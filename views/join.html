@@ -5,7 +5,7 @@
   <main class="page narrow">
     <nav class="topbar"><a class="brand" href="/"><span class="brand-mark">D!</span> Draw & Guess</a></nav>
     <section class="card accent center"><span class="pill">Room <b id="joinRoomCode"></b></span><h2 style="margin-top:16px">Siap ikut main?</h2><p class="muted">Pakai nama yang mudah dikenali teman satu tim.</p>
-      <form id="joinForm" class="stack" style="text-align:left"><div class="field"><label for="playerName">Nama kamu</label><input id="playerName" class="input" minlength="2" maxlength="20" autocomplete="name" placeholder="Contoh: Ahmad" required autofocus></div><div id="joinError" class="form-error"></div><button id="joinButton" class="btn secondary" type="submit">Join Game</button></form>
+      <form id="joinForm" class="stack" style="text-align:left"><div class="field"><label for="playerName">Nama kamu</label><input id="playerName" class="input" minlength="2" maxlength="20" autocomplete="name" placeholder="Contoh: Ahmad" required autofocus><span class="help">Username admin dilindungi dengan PIN khusus.</span></div><div id="joinAdminPinField" class="field hidden"><label for="joinAdminPin">PIN admin</label><input id="joinAdminPin" class="input" type="password" inputmode="numeric" minlength="4" maxlength="8" placeholder="Masukkan PIN admin"></div><div id="joinError" class="form-error"></div><button id="joinButton" class="btn secondary" type="submit">Join Game</button></form>
     </section>
   </main>
   <div id="toast" class="toast"></div><script src="/socket.io/socket.io.js"></script><script src="/public/js/common.js"></script><script src="/public/js/join.js"></script>

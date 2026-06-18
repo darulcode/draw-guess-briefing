@@ -1,5 +1,13 @@
 const socket = io();
 const form = document.getElementById('createRoomForm');
+const drawerMode = document.getElementById('drawerMode');
+const adminPinField = document.getElementById('adminPinField');
+
+function updateModeFields() {
+  adminPinField.classList.toggle('hidden', drawerMode.value !== 'admin');
+}
+drawerMode.addEventListener('change', updateModeFields);
+updateModeFields();
 
 form.addEventListener('submit', async (event) => {
   event.preventDefault();
@@ -12,7 +20,8 @@ form.addEventListener('submit', async (event) => {
     name: document.getElementById('sessionName').value,
     maxRound: document.getElementById('maxRound').value,
     duration: document.getElementById('duration').value,
-    wordMode: document.getElementById('wordMode').value
+    drawerMode: drawerMode.value,
+    adminPin: document.getElementById('adminPin').value || '1234'
   });
   if (!response?.ok) {
     error.textContent = response?.error || 'Room gagal dibuat.';

@@ -29,16 +29,25 @@ function render(next) {
     document.getElementById('gameTitle').textContent = 'Room sedang bersiap';
     document.getElementById('waitingNames').innerHTML = (state.players || []).map((player) => `<span class="waiting-name">${GameUI.escapeHtml(player.name)}</span>`).join('');
     document.getElementById('playerTimer').textContent = '--:--';
+    document.getElementById('guessInput').disabled = false;
+    document.getElementById('guessButton').disabled = false;
+    document.getElementById('guessInput').value = '';
+    document.getElementById('answerStatus').className = 'answer-status';
+    document.getElementById('answerStatus').textContent = '';
   } else if (state.status === 'countdown' || state.status === 'drawing') {
     show('gameView');
     const isDrawer = state.me.isDrawer;
     document.getElementById('gameTitle').textContent = isDrawer ? 'Saatnya menggambar!' : `Tebak gambar ${state.drawer?.name || ''}`;
-    document.getElementById('roleBanner').textContent = isDrawer ? 'Kamu adalah penggambar ronde ini' : `Penggambar: ${state.drawer?.name || '-'}`;
+    document.getElementById('roleBanner').textContent = isDrawer ? 'Kamu adalah penggambar ronde ini' : state.me.isEligibleGuesser ? `Penggambar: ${state.drawer?.name || '-'}` : 'Kamu masuk setelah ronde dimulai. Tunggu ronde berikutnya.';
     document.getElementById('drawerToolbar').classList.toggle('hidden', !isDrawer || state.status !== 'drawing');
-    document.getElementById('guessForm').classList.toggle('hidden', isDrawer || state.status !== 'drawing');
+    document.getElementById('guessForm').classList.toggle('hidden', isDrawer || !state.me.isEligibleGuesser || state.status !== 'drawing');
     document.getElementById('secretWord').classList.toggle('hidden', !isDrawer || !secret);
     document.getElementById('secretWord').textContent = secret ? `Kata: ${secret.toUpperCase()}` : '';
     canvas.setEnabled(isDrawer && state.status === 'drawing');
+    if (state.canGuess) {
+      document.getElementById('guessInput').disabled = false;
+      document.getElementById('guessButton').disabled = false;
+    }
     if (state.me.hasCorrect) {
       document.getElementById('guessForm').classList.remove('hidden');
       document.getElementById('guessInput').disabled = true;

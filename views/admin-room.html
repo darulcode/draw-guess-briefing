@@ -13,10 +13,9 @@
       <div class="stack">
         <article class="card accent"><div class="card-head"><div><span id="roundLabel" class="pill">Ronde 0 / 5</span><h2 style="margin-top:12px">Kontrol ronde</h2></div></div>
           <div id="roundControls" class="stack">
-            <div class="field"><label for="drawerSelect">Pilih penggambar</label><select id="drawerSelect" class="select"><option value="">Pilih peserta...</option></select></div>
-            <div class="field"><label for="secretWord">Kata rahasia</label><div class="input-group"><input id="secretWord" class="input" maxlength="40" placeholder="Contoh: payung"><button id="randomWord" class="btn ghost" type="button">Acak Kata</button></div></div>
-            <div class="field"><label for="roundDuration">Durasi ronde</label><select id="roundDuration" class="select"><option value="30">30 detik</option><option value="60">60 detik</option><option value="90">90 detik</option><option value="120">120 detik</option></select></div>
-            <div id="controlError" class="form-error"></div><div class="control-buttons"><button id="startRound" class="btn success">Mulai Ronde</button><button id="stopRound" class="btn danger">Stop</button><button id="skipRound" class="btn ghost">Skip & Batalkan Poin</button><button id="nextRound" class="btn secondary">Lanjut</button></div>
+            <div class="grid two"><div class="metric"><span>Mode penggambar</span><strong id="drawerModeMetric">Peserta acak</strong></div><div class="metric"><span>Kata rahasia</span><strong>Word Bank</strong></div></div>
+            <p id="drawerModeHelp" class="help">Saat Start ditekan, server memilih satu peserta online secara acak.</p>
+            <div id="controlError" class="form-error"></div><div class="control-buttons"><button id="startRound" class="btn success">Start & Acak Ronde</button><button id="stopRound" class="btn danger">Stop</button><button id="skipRound" class="btn ghost">Skip & Batalkan Poin</button><button id="nextRound" class="btn secondary">Lanjut</button></div>
           </div>
         </article>
         <article id="liveSummary" class="card"><div class="grid two"><div class="metric"><span>Status</span><strong id="statusMetric">Waiting</strong></div><div class="metric"><span>Timer</span><strong id="timerMetric">--:--</strong></div></div><p id="secretPreview" class="secret hidden"></p></article>

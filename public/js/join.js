@@ -2,6 +2,15 @@ const socket = io();
 const roomId = GameUI.roomIdFromPath();
 const storageKey = `drawguess_player_${roomId}`;
 document.getElementById('joinRoomCode').textContent = roomId;
+const playerName = document.getElementById('playerName');
+const adminPinField = document.getElementById('joinAdminPinField');
+
+function updateAdminPin() {
+  const needsPin = playerName.value.trim().toLowerCase() === 'admin';
+  adminPinField.classList.toggle('hidden', !needsPin);
+  document.getElementById('joinAdminPin').required = needsPin;
+}
+playerName.addEventListener('input', updateAdminPin);
 
 socket.on('connect', async () => {
   const existing = JSON.parse(localStorage.getItem(storageKey) || 'null');
@@ -16,7 +25,7 @@ document.getElementById('joinForm').addEventListener('submit', async (event) => 
   const button = document.getElementById('joinButton');
   const error = document.getElementById('joinError');
   error.textContent = ''; button.disabled = true;
-  const response = await GameUI.socketAck(socket, 'player:join', { roomId, name: document.getElementById('playerName').value });
+  const response = await GameUI.socketAck(socket, 'player:join', { roomId, name: playerName.value, adminPin: document.getElementById('joinAdminPin').value });
   if (!response?.ok) {
     error.textContent = response?.error || 'Tidak dapat bergabung.';
     button.disabled = false;

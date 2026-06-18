@@ -9,13 +9,15 @@ const { nanoid } = require('nanoid');
 const { JsonStore } = require('./store');
 const {
   canTransition,
-  getDrawerBonus,
+  getDrawerScore,
   getPointsByRank,
   hashToken,
+  isAdminUsername,
   leaderboard,
   normalizeAnswer,
   safeTokenEquals,
   sanitizeStroke,
+  selectDrawer,
   validateName
 } = require('./game-utils');
 
@@ -57,8 +59,15 @@ async function createGameServer(options = {}) {
   const port = Number(options.port ?? process.env.PORT ?? 3000);
   const countdownMs = Number(options.countdownMs ?? 3000);
   const tickMs = Number(options.tickMs ?? 1000);
-  const store = await new JsonStore(options.dbPath || path.join(root, 'data', 'db.json')).init();
+  const store = await new JsonStore(options.dbPath || process.env.DB_PATH || path.join(root, 'data', 'db.json')).init();
   const words = await fs.readJson(options.wordsPath || path.join(root, 'data', 'words.json'));
+  let migratedRooms = false;
+  for (const room of store.data.rooms) {
+    if (!room.drawerMode) { room.drawerMode = 'manual'; migratedRooms = true; }
+    if (!room.adminPinHash) { room.adminPinHash = hashToken('1234'); migratedRooms = true; }
+    if (!Array.isArray(room.usedWords)) { room.usedWords = []; migratedRooms = true; }
+  }
+  if (migratedRooms) await store.save();
   const app = express();
   const server = http.createServer(app);
   const io = new Server(server, { cors: { origin: false } });
@@ -94,6 +103,19 @@ async function createGameServer(options = {}) {
     runtime.delete(roomId);
   }
 
+  function takeWordFromBank(room) {
+    const bank = words.map((entry) => normalizeAnswer(entry.word)).filter(Boolean);
+    if (!bank.length) return null;
+    let available = bank.filter((word) => !room.usedWords.includes(word));
+    if (!available.length) {
+      room.usedWords = [];
+      available = bank;
+    }
+    const word = available[Math.floor(Math.random() * available.length)];
+    room.usedWords.push(word);
+    return word;
+  }
+
   function roomResult(room) {
     const round = store.currentRound(room);
     if (!round) return null;
@@ -107,12 +129,15 @@ async function createGameServer(options = {}) {
         points: answer.points
       }));
     const drawer = store.data.players.find((player) => player.id === round.drawerId);
+    const totalGuessers = round.eligibleGuesserIds?.length ?? Math.max(store.roomPlayers(room.id).length - 1, 0);
+    const drawerScore = round.drawerScore ?? round.drawerBonus ?? 0;
+    const percentage = totalGuessers ? Math.round((correct.length / totalGuessers) * 100) : 0;
     return {
       roundNumber: round.roundNumber,
       status: round.status,
       word: round.word,
       correct,
-      drawer: drawer ? { id: drawer.id, name: drawer.name, bonus: round.drawerBonus || 0 } : null
+      drawer: drawer ? { id: drawer.id, name: drawer.name, score: drawerScore, percentage, correctCount: correct.length, totalGuessers } : null
     };
   }
 
@@ -126,6 +151,7 @@ async function createGameServer(options = {}) {
       currentRound: room.currentRound,
       maxRound: room.maxRound,
       duration: room.duration,
+      drawerMode: room.drawerMode,
       countdownEndsAt: room.countdownEndsAt,
       endsAt: room.endsAt,
       drawer: drawer ? publicPlayer(drawer) : null,
@@ -139,7 +165,7 @@ async function createGameServer(options = {}) {
     return {
       ...sharedState(room),
       secretWord: room.currentWord,
-      players: players.map((player) => ({ ...publicPlayer(player, true), isOnline: player.isOnline })),
+      players: players.map((player) => ({ ...publicPlayer(player, true), isOnline: player.isOnline, isAdminUser: isAdminUsername(player.name) })),
       answers: answers.map((answer) => ({
         id: answer.id,
         playerId: answer.playerId,
@@ -161,13 +187,16 @@ async function createGameServer(options = {}) {
   function playerState(room, player) {
     const players = store.roomPlayers(room.id);
     const currentAnswers = room.currentRound ? store.roundAnswers(room.id, room.currentRound) : [];
+    const round = store.currentRound(room);
+    const eligibleGuesserIds = round?.eligibleGuesserIds || players.filter((item) => item.id !== room.drawerId).map((item) => item.id);
+    const isEligibleGuesser = eligibleGuesserIds.includes(player.id);
     const hasCorrect = currentAnswers.some((answer) => answer.playerId === player.id && answer.isCorrect && !answer.rolledBack);
     const showResults = room.status === 'round_result' || room.status === 'finished';
     return {
       ...sharedState(room),
       players: room.status === 'waiting' ? players.map((item) => publicPlayer(item)) : undefined,
-      me: { ...publicPlayer(player, true), isDrawer: player.id === room.drawerId, hasCorrect },
-      canGuess: room.status === 'drawing' && player.id !== room.drawerId && !hasCorrect,
+      me: { ...publicPlayer(player, true), isDrawer: player.id === room.drawerId, isEligibleGuesser, hasCorrect },
+      canGuess: room.status === 'drawing' && isEligibleGuesser && player.id !== room.drawerId && !hasCorrect,
       result: showResults ? roomResult(room) : null,
       leaderboard: showResults ? leaderboard(players) : undefined
     };
@@ -267,11 +296,14 @@ async function createGameServer(options = {}) {
         answer.rolledBack = true;
       }
       round.correctOrder = [];
-      round.drawerBonus = 0;
+      round.drawerScore = 0;
+      round.drawerCorrectPercentage = 0;
     } else if (!round.bonusAwarded) {
-      round.drawerBonus = getDrawerBonus(correctAnswers.length);
+      const totalGuessers = round.eligibleGuesserIds?.length ?? Math.max(players.length - 1, 0);
+      round.drawerScore = getDrawerScore(correctAnswers.length, totalGuessers);
+      round.drawerCorrectPercentage = totalGuessers ? Math.round((correctAnswers.length / totalGuessers) * 100) : 0;
       const drawer = players.find((player) => player.id === round.drawerId);
-      if (drawer) drawer.score += round.drawerBonus;
+      if (drawer) drawer.score += round.drawerScore;
       round.bonusAwarded = true;
     }
 
@@ -312,6 +344,9 @@ async function createGameServer(options = {}) {
         const name = String(payload.name || 'Briefing Pagi').trim().slice(0, 50) || 'Briefing Pagi';
         const maxRound = Math.min(Math.max(Number(payload.maxRound) || 5, 1), 20);
         const duration = Math.min(Math.max(Number(payload.duration) || 60, 15), 300);
+        const drawerMode = payload.drawerMode === 'admin' ? 'admin' : 'manual';
+        const adminPin = String(payload.adminPin || '1234').trim();
+        if (!/^\d{4,8}$/.test(adminPin)) throw new Error('PIN admin harus terdiri dari 4 sampai 8 digit.');
         const roomId = createRoomId(store);
         const hostToken = nanoid(32);
         const room = {
@@ -321,7 +356,10 @@ async function createGameServer(options = {}) {
           currentRound: 0,
           maxRound,
           duration,
-          wordMode: payload.wordMode === 'random' ? 'random' : 'manual',
+          drawerMode,
+          adminPinHash: hashToken(adminPin),
+          usedWords: [],
+          lastDrawerId: null,
           currentWord: null,
           drawerId: null,
           startedAt: null,
@@ -361,6 +399,9 @@ async function createGameServer(options = {}) {
       if (room.status === 'finished') return acknowledge(ack, { ok: false, error: 'Game sudah selesai.' });
       const checked = validateName(payload.name);
       if (!checked.ok) return acknowledge(ack, { ok: false, error: checked.error });
+      if (isAdminUsername(checked.name) && !safeTokenEquals(payload.adminPin, room.adminPinHash)) {
+        return acknowledge(ack, { ok: false, error: 'PIN admin salah.' });
+      }
       const duplicate = store.roomPlayers(room.id).some((player) => normalizeAnswer(player.name) === normalizeAnswer(checked.name));
       if (duplicate) return acknowledge(ack, { ok: false, error: 'Nama sudah digunakan di room ini.' });
       const playerToken = nanoid(32);
@@ -395,28 +436,27 @@ async function createGameServer(options = {}) {
       await broadcastRoom(room.id);
     });
 
-    socket.on('admin:random-word', (payload = {}, ack) => {
-      if (!authHost(payload.roomId, payload.hostToken)) return acknowledge(ack, { ok: false, error: 'Akses host ditolak.' });
-      const choice = words[Math.floor(Math.random() * words.length)];
-      return acknowledge(ack, { ok: true, data: choice });
-    });
-
     socket.on('admin:start-countdown', async (payload = {}, ack) => {
       const room = authHost(payload.roomId, payload.hostToken);
       if (!room) return acknowledge(ack, { ok: false, error: 'Akses host ditolak.' });
       if (room.status !== 'waiting') return acknowledge(ack, { ok: false, error: 'Ronde sebelumnya belum selesai.' });
-      const players = store.roomPlayers(room.id);
-      if (players.length < 2) return acknowledge(ack, { ok: false, error: 'Minimal 2 peserta untuk memulai.' });
-      if (!players.some((player) => player.id === payload.drawerId)) return acknowledge(ack, { ok: false, error: 'Pilih penggambar yang valid.' });
-      const word = normalizeAnswer(payload.word);
-      if (!word) return acknowledge(ack, { ok: false, error: 'Kata rahasia wajib diisi.' });
-      const duration = Math.min(Math.max(Number(payload.duration) || room.duration, 15), 300);
+      const onlinePlayers = store.roomPlayers(room.id).filter((player) => player.isOnline);
+      if (onlinePlayers.length < 2) return acknowledge(ack, { ok: false, error: 'Minimal 2 peserta online untuk memulai.' });
+      const drawer = selectDrawer(onlinePlayers, room.drawerMode, room.lastDrawerId);
+      if (!drawer && room.drawerMode === 'admin') {
+        return acknowledge(ack, { ok: false, error: 'Mode Admin membutuhkan peserta online dengan username admin.' });
+      }
+      if (!drawer) return acknowledge(ack, { ok: false, error: 'Tidak ada penggambar yang dapat dipilih.' });
+      const eligibleGuesserIds = onlinePlayers.filter((player) => player.id !== drawer.id).map((player) => player.id);
+      if (!eligibleGuesserIds.length) return acknowledge(ack, { ok: false, error: 'Minimal satu penebak online diperlukan.' });
+      const word = takeWordFromBank(room);
+      if (!word) return acknowledge(ack, { ok: false, error: 'Word bank kosong.' });
       if (!canTransition(room.status, 'countdown')) return acknowledge(ack, { ok: false, error: 'Transisi ronde tidak valid.' });
       room.status = 'countdown';
       room.currentRound += 1;
-      room.drawerId = payload.drawerId;
+      room.drawerId = drawer.id;
+      room.lastDrawerId = drawer.id;
       room.currentWord = word;
-      room.duration = duration;
       room.countdownEndsAt = new Date(Date.now() + countdownMs).toISOString();
       room.endsAt = null;
       const round = {
@@ -427,7 +467,9 @@ async function createGameServer(options = {}) {
         word,
         status: 'countdown',
         correctOrder: [],
-        drawerBonus: 0,
+        eligibleGuesserIds,
+        drawerScore: 0,
+        drawerCorrectPercentage: 0,
         bonusAwarded: false,
         startedAt: null,
         endedAt: null
@@ -498,6 +540,8 @@ async function createGameServer(options = {}) {
       room.startedAt = null;
       room.endsAt = null;
       room.countdownEndsAt = null;
+      room.usedWords = [];
+      room.lastDrawerId = null;
       for (const player of store.roomPlayers(room.id)) player.score = 0;
       store.data.rounds = store.data.rounds.filter((round) => round.roomId !== room.id);
       store.data.answers = store.data.answers.filter((answer) => answer.roomId !== room.id);
@@ -514,6 +558,11 @@ async function createGameServer(options = {}) {
       if (!room || !player) return acknowledge(ack, { ok: false, error: 'Sesi pemain tidak valid.' });
       if (room.status !== 'drawing') return acknowledge(ack, { ok: false, error: 'Ronde belum dimulai atau sudah selesai.' });
       if (player.id === room.drawerId) return acknowledge(ack, { ok: false, error: 'Penggambar tidak dapat menjawab.' });
+      const round = store.currentRound(room);
+      const eligibleGuesserIds = round?.eligibleGuesserIds || store.roomPlayers(room.id).filter((item) => item.id !== room.drawerId).map((item) => item.id);
+      if (!eligibleGuesserIds.includes(player.id)) {
+        return acknowledge(ack, { ok: false, error: 'Kamu bergabung setelah ronde dimulai. Tunggu ronde berikutnya.' });
+      }
       const answerText = normalizeAnswer(payload.answer);
       if (!answerText) return acknowledge(ack, { ok: false, error: 'Jawaban tidak boleh kosong.' });
       const roundAnswers = store.roundAnswers(room.id, room.currentRound);
@@ -537,7 +586,6 @@ async function createGameServer(options = {}) {
       store.data.answers.push(answer);
       if (isCorrect) {
         player.score += points;
-        const round = store.currentRound(room);
         round.correctOrder.push(player.id);
       }
       await store.save();
@@ -545,9 +593,8 @@ async function createGameServer(options = {}) {
       socket.emit('answer:result', result);
       acknowledge(ack, { ok: true, data: result });
       await broadcastRoom(room.id);
-      const eligible = store.roomPlayers(room.id).filter((item) => item.id !== room.drawerId);
       const correctIds = new Set(store.roundAnswers(room.id, room.currentRound).filter((item) => item.isCorrect && !item.rolledBack).map((item) => item.playerId));
-      if (eligible.length > 0 && eligible.every((item) => correctIds.has(item.id))) await endRound(room.id, 'finished');
+      if (eligibleGuesserIds.length > 0 && eligibleGuesserIds.every((playerId) => correctIds.has(playerId))) await endRound(room.id, 'finished');
     });
 
     function registerDraw(clientEvent, serverEvent, type) {
@@ -609,7 +656,8 @@ async function createGameServer(options = {}) {
     if (round) {
       round.status = 'interrupted';
       round.endedAt = new Date().toISOString();
-      round.drawerBonus = 0;
+      round.drawerScore = 0;
+      round.drawerCorrectPercentage = 0;
     }
     room.status = 'round_result';
     room.endsAt = null;
