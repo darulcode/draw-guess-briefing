@@ -1,7 +1,7 @@
 const path = require('node:path');
 const fs = require('fs-extra');
 
-const EMPTY_DB = { rooms: [], players: [], rounds: [], answers: [] };
+const EMPTY_DB = { users: [], sessions: [], rooms: [], players: [], rounds: [], answers: [] };
 
 class JsonStore {
   constructor(filePath) {

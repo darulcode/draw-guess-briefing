@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Akun | Draw & Guess</title>
+  <link rel="stylesheet" href="/public/css/base.css"><link rel="stylesheet" href="/public/css/auth.css">
+</head>
+<body data-auth-page="account">
+  <main class="page narrow auth-page">
+    <nav class="topbar"><a class="brand" href="/"><span class="brand-mark">D!</span> Draw & Guess</a><a class="btn ghost small" href="/">Beranda</a></nav>
+    <section class="card account-card">
+      <span class="pill">Akun saya</span>
+      <div class="account-profile"><div id="accountAvatar" class="account-avatar">?</div><div><h2 id="accountName">Memuat...</h2><p id="accountEmail" class="muted"></p></div></div>
+      <div class="grid two account-providers">
+        <div class="metric"><span>Email & password</span><strong id="passwordStatus">-</strong></div>
+        <div class="metric"><span>Google</span><strong id="googleStatus">-</strong></div>
+      </div>
+      <a id="connectGoogle" class="btn google-btn hidden" href="/auth/google?next=/account"><span class="google-mark">G</span> Hubungkan Google</a>
+      <div class="account-actions"><a class="btn secondary" href="/admin">Buat Room</a><button id="logoutButton" class="btn danger" type="button">Logout</button></div>
+    </section>
+  </main>
+  <div id="toast" class="toast"></div><script src="/public/js/common.js"></script><script src="/public/js/auth.js"></script>
+</body>
+</html>

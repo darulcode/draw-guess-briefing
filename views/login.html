@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Login | Draw & Guess</title>
+  <link rel="stylesheet" href="/public/css/base.css"><link rel="stylesheet" href="/public/css/auth.css">
+</head>
+<body data-auth-page="login">
+  <main class="page auth-page">
+    <nav class="topbar"><a class="brand" href="/"><span class="brand-mark">D!</span> Draw & Guess</a><a class="btn ghost small" href="/">Kembali</a></nav>
+    <section class="auth-shell">
+      <div class="auth-intro"><span class="eyebrow">Selamat datang lagi</span><h1>Masuk dan mulai main.</h1><p>Simpan akses host dalam satu akun dan buat room baru kapan saja.</p></div>
+      <div class="card auth-card">
+        <h2>Login</h2><p class="muted">Gunakan email atau akun Google kamu.</p>
+        <a id="googleAuth" class="btn google-btn hidden" href="/auth/google"><span class="google-mark">G</span> Lanjutkan dengan Google</a>
+        <div id="googleUnavailable" class="auth-note hidden">Login Google belum diaktifkan oleh pengelola.</div>
+        <div class="auth-divider"><span>atau dengan email</span></div>
+        <form id="authForm" class="stack">
+          <div class="field"><label for="email">Email</label><input id="email" name="email" class="input" type="email" maxlength="254" autocomplete="email" required></div>
+          <div class="field"><label for="password">Password</label><input id="password" name="password" class="input" type="password" minlength="8" maxlength="72" autocomplete="current-password" required></div>
+          <div id="authError" class="form-error" role="alert"></div>
+          <button id="authSubmit" class="btn secondary" type="submit">Login</button>
+        </form>
+        <p class="auth-switch">Belum punya akun? <a id="signupLink" href="/signup">Daftar sekarang</a></p>
+      </div>
+    </section>
+  </main>
+  <div id="toast" class="toast"></div><script src="/public/js/common.js"></script><script src="/public/js/auth.js"></script>
+</body>
+</html>

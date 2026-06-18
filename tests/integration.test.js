@@ -6,9 +6,14 @@ const path = require('node:path');
 const { io: createClient } = require('socket.io-client');
 const { createGameServer } = require('../src/game-server');
 
-function connect(url) {
+function connect(url, cookieHeader = '') {
   return new Promise((resolve, reject) => {
-    const socket = createClient(url, { transports: ['websocket'], forceNew: true, reconnection: false });
+    const socket = createClient(url, {
+      transports: ['websocket'],
+      forceNew: true,
+      reconnection: false,
+      ...(cookieHeader ? { extraHeaders: { Cookie: cookieHeader } } : {})
+    });
     socket.once('connect', () => resolve(socket));
     socket.once('connect_error', reject);
   });
@@ -44,7 +49,14 @@ test('alur admin PIN, word bank, scoring persentase, dan penggambar otomatis', {
     await fs.rm(temp, { recursive: true, force: true });
   });
 
-  const admin = await connect(url); clients.push(admin);
+  const signup = await fetch(`${url}/api/auth/signup`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ displayName: 'Host Test', email: 'host@example.com', password: 'password-test' })
+  });
+  assert.equal(signup.status, 201);
+  const sessionCookie = signup.headers.get('set-cookie').split(';')[0];
+  const admin = await connect(url, sessionCookie); clients.push(admin);
   const created = await emitAck(admin, 'admin:create-room', { name: 'Mode Admin', maxRound: 3, duration: 30, drawerMode: 'admin', adminPin: '1234' });
   assert.equal(created.ok, true);
   const { roomId, hostToken } = created.data;

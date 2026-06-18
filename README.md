@@ -1,6 +1,6 @@
 # Draw & Guess Briefing Game
 
-Game menggambar dan menebak realtime untuk briefing pagi. Host membuat room, peserta bergabung lewat QR atau Room ID, lalu bermain dari HP tanpa akun.
+Game menggambar dan menebak realtime untuk briefing pagi. Host login untuk membuat room, sedangkan peserta tetap dapat bergabung cepat lewat QR atau Room ID tanpa akun.
 
 ## Menjalankan
 
@@ -13,6 +13,8 @@ npm start
 
 Buka `http://localhost:3000`. Server mendengarkan di `0.0.0.0:3000`, sehingga perangkat lain dalam Wi-Fi yang sama dapat membuka alamat IP laptop, misalnya `http://192.168.1.7:3000`.
 
+Login dan signup menggunakan email/password langsung tersedia. Password disimpan sebagai hash dan sesi menggunakan cookie `HttpOnly`.
+
 Jika QR memilih adaptor jaringan yang salah, gunakan `.env.example` sebagai referensi lalu jalankan dengan environment variable yang sesuai:
 
 ```powershell
@@ -20,9 +22,25 @@ $env:PUBLIC_BASE_URL='http://192.168.1.7:3000'
 npm start
 ```
 
+## Login Google
+
+1. Buka Google Cloud Console dan buat **OAuth client ID** bertipe **Web application**.
+2. Tambahkan `http://localhost:3000/auth/google/callback` ke **Authorized redirect URIs**.
+3. Salin `.env.example` menjadi `.env`, lalu isi:
+
+```env
+GOOGLE_CLIENT_ID=client-id-dari-google
+GOOGLE_CLIENT_SECRET=client-secret-dari-google
+GOOGLE_CALLBACK_URL=http://localhost:3000/auth/google/callback
+```
+
+4. Restart server. Tombol **Lanjutkan dengan Google** akan aktif otomatis.
+
+Nilai `GOOGLE_CALLBACK_URL` harus sama persis dengan redirect URI di Google Cloud. Untuk deployment publik, gunakan domain HTTPS milik aplikasi. Jangan commit file `.env` atau client secret ke Git.
+
 ## Alur Penggunaan
 
-1. Buka `/admin`, isi nama sesi, ronde, durasi, dan mode penggambar.
+1. Login atau buat akun, lalu buka `/admin` untuk mengisi nama sesi, ronde, durasi, dan mode penggambar.
 2. Setelah room dibuat, browser langsung masuk ke layar Host + Projector.
 3. Bagikan QR, Room ID, atau salin link dari layar tersebut.
 4. Tekan **Start Ronde**. Server mengambil kata dari word bank dan menentukan penggambar sesuai mode room.
@@ -37,7 +55,7 @@ Browser pembuat room menyimpan token host dan langsung menampilkan satu tombol k
 - Kata rahasia selalu dipilih otomatis dari `data/words.json` dan tidak diulang sampai seluruh word bank telah digunakan.
 - Poin penggambar adalah persentase penebak yang benar dikali 100. Contoh: 2 dari 4 benar menghasilkan 50 poin, dan semua benar menghasilkan 100 poin.
 
-Token host dan sesi pemain disimpan di `localStorage`. Dashboard host hanya dapat dikendalikan dari browser pembuat room. Data runtime tersimpan lokal di `data/db.json` dan tidak ikut Git; server membuat file tersebut otomatis bila belum ada.
+Token host dan sesi pemain disimpan di `localStorage`. Sesi akun memakai cookie `HttpOnly`, sedangkan password hanya disimpan sebagai hash. Dashboard host hanya dapat dikendalikan dari browser pembuat room. Data akun dan runtime tersimpan lokal di `data/db.json` dan tidak ikut Git; server membuat serta memigrasikan struktur file tersebut otomatis bila belum ada.
 
 ## Perintah
 

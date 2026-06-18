@@ -1,3 +1,4 @@
+require('dotenv').config({ quiet: true });
 const { createGameServer } = require('./src/game-server');
 
 createGameServer()

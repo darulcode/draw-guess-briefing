@@ -57,6 +57,9 @@ button { border: 0; }
 .brand { display: flex; align-items: center; gap: 11px; font-family: 'Fredoka'; font-weight: 700; text-decoration: none; }
 .brand-mark { width: 42px; height: 42px; display: grid; place-items: center; border-radius: 14px 14px 14px 4px; color: var(--ink); background: var(--yellow); transform: rotate(-4deg); box-shadow: 0 7px 0 rgba(23,21,43,.24); }
 .top-actions { display: flex; gap: 10px; align-items: center; }
+.account-chip { min-height: 40px; display: inline-flex; align-items: center; gap: 9px; padding: 5px 12px 5px 5px; border: 1px solid rgba(255,255,255,.24); border-radius: 999px; color: white; background: rgba(255,255,255,.12); text-decoration: none; }
+.account-chip span { width: 29px; height: 29px; display: grid; place-items: center; border-radius: 50%; color: var(--ink); background: var(--cyan); font-weight: 800; }
+.account-chip strong { max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: .86rem; }
 
 .hero { color: white; display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(300px, .85fr); gap: 56px; align-items: center; min-height: 72vh; }
 .hero-copy p { max-width: 590px; font-size: 1.15rem; color: rgba(255,255,255,.77); }
@@ -191,6 +194,7 @@ button { border: 0; }
   .page { width: min(100% - 20px, 1180px); padding-top: 14px; }
   .card { padding: 20px; border-radius: 20px; }
   .top-actions .hide-mobile { display: none; }
+  .account-chip strong { display: none; }
   .input-group { flex-direction: column; }
   .hero-actions .btn { width: 100%; }
   .game-header { align-items: flex-start; }

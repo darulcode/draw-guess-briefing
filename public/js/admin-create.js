@@ -24,6 +24,10 @@ form.addEventListener('submit', async (event) => {
     adminPin: document.getElementById('adminPin').value || '1234'
   });
   if (!response?.ok) {
+    if (response?.error === 'Silakan login sebelum membuat room.') {
+      location.href = '/login?next=/admin';
+      return;
+    }
     error.textContent = response?.error || 'Room gagal dibuat.';
     button.disabled = false;
     button.textContent = 'Buat Room Sekarang';

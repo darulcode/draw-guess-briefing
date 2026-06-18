@@ -6,6 +6,8 @@ const express = require('express');
 const { Server } = require('socket.io');
 const QRCode = require('qrcode');
 const { nanoid } = require('nanoid');
+const { AuthService, publicUser } = require('./auth-service');
+const { safeNextPath } = require('./auth-utils');
 const { JsonStore } = require('./store');
 const {
   canTransition,
@@ -60,6 +62,15 @@ async function createGameServer(options = {}) {
   const countdownMs = Number(options.countdownMs ?? 3000);
   const tickMs = Number(options.tickMs ?? 1000);
   const store = await new JsonStore(options.dbPath || process.env.DB_PATH || path.join(root, 'data', 'db.json')).init();
+  const auth = new AuthService({
+    store,
+    passwordRounds: options.passwordRounds,
+    sessionTtlMs: options.sessionTtlMs,
+    googleClient: options.googleClient,
+    googleClientId: options.googleClientId ?? process.env.GOOGLE_CLIENT_ID,
+    googleClientSecret: options.googleClientSecret ?? process.env.GOOGLE_CLIENT_SECRET,
+    googleCallbackUrl: options.googleCallbackUrl ?? process.env.GOOGLE_CALLBACK_URL
+  });
   const words = await fs.readJson(options.wordsPath || path.join(root, 'data', 'words.json'));
   let migratedRooms = false;
   for (const room of store.data.rooms) {
@@ -69,10 +80,12 @@ async function createGameServer(options = {}) {
   }
   if (migratedRooms) await store.save();
   const app = express();
+  if (process.env.TRUST_PROXY === '1') app.set('trust proxy', 1);
   const server = http.createServer(app);
   const io = new Server(server, { cors: { origin: false } });
   const runtime = new Map();
   const canvasHistory = new Map();
+  const authAttempts = new Map();
   let shuttingDown = false;
 
   const configuredBase = String(options.publicBaseUrl ?? process.env.PUBLIC_BASE_URL ?? '').replace(/\/$/, '');
@@ -81,6 +94,64 @@ async function createGameServer(options = {}) {
   const joinUrl = (roomId) => `${baseUrl}/join/${roomId}`;
 
   app.use('/public', express.static(path.join(root, 'public'), { maxAge: 0, etag: true }));
+  app.use(express.json({ limit: '16kb' }));
+  app.use(express.urlencoded({ extended: false, limit: '16kb' }));
+  app.use((req, _res, next) => {
+    req.authUser = auth.userFromCookieHeader(req.headers.cookie);
+    next();
+  });
+
+  function requestIsSecure(req) {
+    return Boolean(req.secure);
+  }
+
+  function sameOrigin(req) {
+    const origin = req.get('origin');
+    if (!origin) return true;
+    try {
+      return new URL(origin).host === req.get('host');
+    } catch {
+      return false;
+    }
+  }
+
+  function requireUser(req, res, next) {
+    if (req.authUser) return next();
+    return res.redirect(`/login?next=${encodeURIComponent(req.originalUrl)}`);
+  }
+
+  function authError(res, status, error) {
+    return res.status(status).json({ ok: false, error });
+  }
+
+  function authAttemptKey(req, action) {
+    return `${action}:${req.ip}`;
+  }
+
+  function authAttemptBlocked(req, res, action) {
+    const key = authAttemptKey(req, action);
+    const now = Date.now();
+    const attempt = authAttempts.get(key);
+    if (!attempt || attempt.resetAt <= now) {
+      authAttempts.set(key, { count: 0, resetAt: now + 10 * 60 * 1000 });
+      return false;
+    }
+    if (attempt.count < 10) return false;
+    res.set('Retry-After', String(Math.ceil((attempt.resetAt - now) / 1000)));
+    authError(res, 429, 'Terlalu banyak percobaan. Coba lagi beberapa menit lagi.');
+    return true;
+  }
+
+  function recordAuthFailure(req, action) {
+    const key = authAttemptKey(req, action);
+    const attempt = authAttempts.get(key);
+    if (attempt) attempt.count += 1;
+  }
+
+  function clearAuthFailures(req, action) {
+    authAttempts.delete(authAttemptKey(req, action));
+  }
+
   app.get('/health', (_req, res) => res.json({ ok: true, rooms: store.data.rooms.length }));
   app.get('/api/rooms/:roomId/qr', async (req, res) => {
     if (!store.room(req.params.roomId)) return res.status(404).json({ error: 'Room tidak ditemukan.' });
@@ -90,11 +161,79 @@ async function createGameServer(options = {}) {
 
   const view = (name) => (_req, res) => res.sendFile(path.join(root, 'views', name));
   app.get('/', view('index.html'));
-  app.get('/admin', view('admin.html'));
+  app.get('/login', (req, res) => req.authUser ? res.redirect(safeNextPath(req.query.next)) : view('login.html')(req, res));
+  app.get('/signup', (req, res) => req.authUser ? res.redirect(safeNextPath(req.query.next)) : view('signup.html')(req, res));
+  app.get('/account', requireUser, view('account.html'));
+  app.get('/admin', requireUser, view('admin.html'));
   app.get('/admin/room/:roomId', (req, res) => res.redirect(`/screen/${req.params.roomId}`));
   app.get('/join/:roomId', view('join.html'));
   app.get('/play/:roomId', view('play.html'));
   app.get('/screen/:roomId', view('screen.html'));
+
+  app.use('/api/auth', (_req, res, next) => {
+    res.set('Cache-Control', 'no-store');
+    next();
+  });
+
+  app.get('/api/auth/me', (req, res) => {
+    res.json({ ok: true, data: { user: publicUser(req.authUser), googleEnabled: auth.googleEnabled } });
+  });
+
+  app.post('/api/auth/signup', async (req, res) => {
+    if (!sameOrigin(req)) return authError(res, 403, 'Origin permintaan tidak valid.');
+    if (authAttemptBlocked(req, res, 'signup')) return;
+    const result = await auth.signup(req.body || {});
+    if (!result.ok) {
+      recordAuthFailure(req, 'signup');
+      return authError(res, 400, result.error);
+    }
+    clearAuthFailures(req, 'signup');
+    const token = await auth.createSession(result.user.id);
+    res.setHeader('Set-Cookie', auth.sessionCookie(token, requestIsSecure(req)));
+    return res.status(201).json({ ok: true, data: { user: publicUser(result.user), next: safeNextPath(req.body?.next) } });
+  });
+
+  app.post('/api/auth/login', async (req, res) => {
+    if (!sameOrigin(req)) return authError(res, 403, 'Origin permintaan tidak valid.');
+    if (authAttemptBlocked(req, res, 'login')) return;
+    const result = await auth.login(req.body || {});
+    if (!result.ok) {
+      recordAuthFailure(req, 'login');
+      return authError(res, 401, result.error);
+    }
+    clearAuthFailures(req, 'login');
+    const token = await auth.createSession(result.user.id);
+    res.setHeader('Set-Cookie', auth.sessionCookie(token, requestIsSecure(req)));
+    return res.json({ ok: true, data: { user: publicUser(result.user), next: safeNextPath(req.body?.next) } });
+  });
+
+  app.post('/api/auth/logout', async (req, res) => {
+    if (!sameOrigin(req)) return authError(res, 403, 'Origin permintaan tidak valid.');
+    await auth.destroySession(auth.sessionToken(req.headers.cookie));
+    res.setHeader('Set-Cookie', auth.clearSessionCookie(requestIsSecure(req)));
+    return res.json({ ok: true });
+  });
+
+  app.get('/auth/google', (req, res) => {
+    const result = auth.beginGoogle(req.query.next);
+    if (!result.ok) return res.redirect(`/login?error=${encodeURIComponent(result.error)}`);
+    res.setHeader('Set-Cookie', auth.googleStateCookieValue(result.state, requestIsSecure(req)));
+    return res.redirect(result.url);
+  });
+
+  app.get('/auth/google/callback', async (req, res) => {
+    try {
+      const result = await auth.finishGoogle({ code: req.query.code, state: req.query.state, cookieHeader: req.headers.cookie });
+      res.append('Set-Cookie', auth.clearGoogleStateCookie(requestIsSecure(req)));
+      if (!result.ok) return res.redirect(`/login?error=${encodeURIComponent(result.error)}`);
+      const token = await auth.createSession(result.user.id);
+      res.append('Set-Cookie', auth.sessionCookie(token, requestIsSecure(req)));
+      return res.redirect(result.next);
+    } catch (error) {
+      res.append('Set-Cookie', auth.clearGoogleStateCookie(requestIsSecure(req)));
+      return res.redirect(`/login?error=${encodeURIComponent('Login Google gagal. Coba lagi.')}`);
+    }
+  });
 
   function clearRuntime(roomId) {
     const active = runtime.get(roomId);
@@ -379,7 +518,7 @@ async function createGameServer(options = {}) {
   }
 
   function attachSocket(socket, role, roomId, playerId = null) {
-    socket.data = { role, roomId, playerId };
+    socket.data = { ...socket.data, role, roomId, playerId };
     socket.join(`room:${roomId}`);
     socket.join(`${role === 'player' ? 'players' : role}:${roomId}`);
   }
@@ -389,8 +528,10 @@ async function createGameServer(options = {}) {
   }
 
   io.on('connection', (socket) => {
+    socket.data.authUserId = auth.userFromCookieHeader(socket.request.headers.cookie)?.id || null;
     socket.on('admin:create-room', async (payload = {}, ack) => {
       try {
+        if (!socket.data.authUserId) throw new Error('Silakan login sebelum membuat room.');
         const name = String(payload.name || 'Briefing Pagi').trim().slice(0, 50) || 'Briefing Pagi';
         const maxRound = Math.min(Math.max(Number(payload.maxRound) || 5, 1), 20);
         const duration = Math.min(Math.max(Number(payload.duration) || 60, 15), 300);
@@ -416,6 +557,7 @@ async function createGameServer(options = {}) {
           endsAt: null,
           countdownEndsAt: null,
           hostTokenHash: hashToken(hostToken),
+          ownerUserId: socket.data.authUserId,
           createdAt: new Date().toISOString()
         };
         store.data.rooms.push(room);
@@ -682,6 +824,7 @@ async function createGameServer(options = {}) {
     io,
     server,
     store,
+    auth,
     baseUrl,
     async listen(listenPort = port) {
       await new Promise((resolve) => server.listen(listenPort, '0.0.0.0', resolve));

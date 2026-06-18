@@ -13,8 +13,12 @@
     "node": ">=20"
   },
   "dependencies": {
+    "bcryptjs": "^3.0.3",
+    "cookie": "^1.1.1",
+    "dotenv": "^17.4.2",
     "express": "^5.1.0",
     "fs-extra": "^11.3.0",
+    "google-auth-library": "^10.7.0",
     "nanoid": "^3.3.11",
     "qrcode": "^1.5.4",
     "socket.io": "^4.8.1"
