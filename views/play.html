@@ -1,0 +1,18 @@
+<!doctype html>
+<html lang="id">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Main | Draw & Guess</title><link rel="stylesheet" href="/public/css/base.css"><link rel="stylesheet" href="/public/css/player.css"></head>
+<body>
+  <main class="page player-page">
+    <nav class="topbar"><a class="brand" href="/"><span class="brand-mark">D!</span> Draw & Guess</a><span id="scoreBadge" class="score-badge">0 poin</span></nav>
+    <section id="playerShell" class="card player-card">
+      <div class="game-header"><div><span id="roundBadge" class="pill">Menunggu</span><h2 id="gameTitle" style="margin:10px 0 0">Masuk ke arena...</h2></div><div id="playerTimer" class="timer">--:--</div></div>
+      <div id="waitingView" class="center"><div style="font-size:4rem">✦</div><h2>Room sedang bersiap</h2><p class="muted">Tunggu host memilih penggambar dan kata.</p><div id="waitingNames" class="waiting-names"></div></div>
+      <div id="gameView" class="hidden"><div id="roleBanner" class="role-banner"></div><div id="secretWord" class="secret hidden"></div><div class="canvas-frame player-canvas locked" id="canvasFrame"><canvas id="gameCanvas"></canvas></div><div id="drawerToolbar" class="toolbar hidden"><button class="tool active" data-tool="brush">Brush</button><button class="tool" data-tool="eraser">Eraser</button><input id="brushColor" class="color-input" type="color" value="#7557ff" aria-label="Warna brush"><input id="brushSize" type="range" min="2" max="30" value="6" aria-label="Ukuran brush"><button id="clearCanvas" class="tool">Clear</button></div><form id="guessForm" class="guess-panel hidden"><div class="input-group"><input id="guessInput" class="input" maxlength="60" autocomplete="off" placeholder="Ketik tebakanmu..."><button id="guessButton" class="btn" type="submit">Kirim</button></div><div id="answerStatus" class="answer-status"></div></form></div>
+      <div id="resultView" class="hidden center"></div>
+      <div id="finalView" class="hidden center"></div>
+    </section>
+  </main>
+  <div id="countdown" class="countdown-overlay hidden"><div id="countdownNumber" class="countdown-number">3</div></div><canvas id="confettiCanvas" class="confetti-canvas"></canvas><div id="toast" class="toast"></div>
+  <script src="/socket.io/socket.io.js"></script><script src="/public/js/common.js"></script><script src="/public/js/canvas.js"></script><script src="/public/js/confetti.js"></script><script src="/public/js/play.js"></script>
+</body>
+</html>

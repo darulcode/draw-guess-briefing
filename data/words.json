@@ -1,0 +1,19 @@
+[
+  { "word": "payung", "category": "benda", "difficulty": "easy" },
+  { "word": "printer", "category": "kantor", "difficulty": "easy" },
+  { "word": "kucing", "category": "hewan", "difficulty": "easy" },
+  { "word": "kopi", "category": "makanan", "difficulty": "easy" },
+  { "word": "brankas", "category": "kantor", "difficulty": "medium" },
+  { "word": "antrian", "category": "aktivitas", "difficulty": "medium" },
+  { "word": "helm", "category": "benda", "difficulty": "easy" },
+  { "word": "sepeda", "category": "kendaraan", "difficulty": "easy" },
+  { "word": "uang tunai", "category": "kantor", "difficulty": "easy" },
+  { "word": "kursi", "category": "benda", "difficulty": "easy" },
+  { "word": "meja", "category": "benda", "difficulty": "easy" },
+  { "word": "stempel", "category": "kantor", "difficulty": "easy" },
+  { "word": "formulir", "category": "kantor", "difficulty": "medium" },
+  { "word": "buku tabungan", "category": "kantor", "difficulty": "medium" },
+  { "word": "nasabah", "category": "kantor", "difficulty": "medium" },
+  { "word": "ATM", "category": "kantor", "difficulty": "easy" },
+  { "word": "EDC", "category": "kantor", "difficulty": "easy" }
+]

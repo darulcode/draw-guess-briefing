@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Draw & Guess Briefing</title>
+  <link rel="stylesheet" href="/public/css/base.css">
+</head>
+<body>
+  <main class="page">
+    <nav class="topbar"><a class="brand" href="/"><span class="brand-mark">D!</span> Draw & Guess</a><span class="eyebrow">Briefing jadi hidup</span></nav>
+    <section class="hero">
+      <div class="hero-copy">
+        <span class="eyebrow">Gambar. Tebak. Menang.</span>
+        <h1>Coret idenya.<br>Tebak cepatnya.</h1>
+        <p>Satu orang menggambar, semua orang menebak lewat HP. Tanpa login, tanpa ribet, langsung ramai dalam satu room.</p>
+        <div class="hero-actions"><a class="btn secondary" href="/admin">Buat Room</a><a class="btn ghost" href="#join">Join Game</a></div>
+        <form id="join" class="input-group" style="margin-top:24px;max-width:460px">
+          <input id="roomId" class="input" inputmode="numeric" maxlength="6" placeholder="Masukkan 6 digit Room ID" aria-label="Room ID">
+          <button class="btn" type="submit">Masuk</button>
+        </form>
+      </div>
+      <div class="doodle-board" aria-hidden="true"><span class="sticker one">Tebak!</span><div class="paper-card hero-paper"><div class="scribble"></div></div><span class="sticker two">+100 poin</span></div>
+    </section>
+  </main>
+  <div id="toast" class="toast"></div><script src="/public/js/common.js"></script><script src="/public/js/landing.js"></script>
+</body>
+</html>

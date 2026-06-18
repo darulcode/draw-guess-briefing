@@ -1,0 +1,83 @@
+{
+  "rooms": [
+    {
+      "id": "338347",
+      "name": "Briefing Pagi",
+      "status": "round_result",
+      "currentRound": 1,
+      "maxRound": 5,
+      "duration": 60,
+      "wordMode": "random",
+      "currentWord": "helm",
+      "drawerId": "player_Plu7O0gQUM",
+      "startedAt": "2026-06-18T17:39:20.533Z",
+      "endsAt": null,
+      "countdownEndsAt": null,
+      "hostTokenHash": "f5f4504f3c7c0cab4b83454e0dd0ee57bd8200fef74bcd322dc976cac9f0c2e9",
+      "createdAt": "2026-06-18T17:37:05.540Z"
+    }
+  ],
+  "players": [
+    {
+      "id": "player_Plu7O0gQUM",
+      "roomId": "338347",
+      "name": "darul",
+      "score": 5,
+      "isOnline": true,
+      "socketId": "kOEpELcnn7PnB2ktAAAH",
+      "sessionTokenHash": "07f3280576b1675cca9ed15548e332ce79d2559772a18ac5a0640d6372331e44",
+      "joinedAt": "2026-06-18T17:38:07.899Z"
+    },
+    {
+      "id": "player_C76ocC_Vdw",
+      "roomId": "338347",
+      "name": "Wahyu",
+      "score": 100,
+      "isOnline": false,
+      "socketId": null,
+      "sessionTokenHash": "1d8bf3a21ec405bc48e7eae2c3cd1618f0b2c0dd31d44dd646551dcc0732074a",
+      "joinedAt": "2026-06-18T17:38:53.769Z"
+    }
+  ],
+  "rounds": [
+    {
+      "id": "round__kvWZVVI_e",
+      "roomId": "338347",
+      "roundNumber": 1,
+      "drawerId": "player_Plu7O0gQUM",
+      "word": "helm",
+      "status": "finished",
+      "correctOrder": [
+        "player_C76ocC_Vdw"
+      ],
+      "drawerBonus": 5,
+      "bonusAwarded": true,
+      "startedAt": "2026-06-18T17:39:20.533Z",
+      "endedAt": "2026-06-18T17:40:03.202Z"
+    }
+  ],
+  "answers": [
+    {
+      "id": "answer_Nma-5gSgoQ",
+      "roomId": "338347",
+      "roundNumber": 1,
+      "playerId": "player_C76ocC_Vdw",
+      "answer": "kepala",
+      "isCorrect": false,
+      "points": 0,
+      "rank": null,
+      "submittedAt": "2026-06-18T17:39:59.307Z"
+    },
+    {
+      "id": "answer_Nx8HoVAd7T",
+      "roomId": "338347",
+      "roundNumber": 1,
+      "playerId": "player_C76ocC_Vdw",
+      "answer": "helm",
+      "isCorrect": true,
+      "points": 100,
+      "rank": 1,
+      "submittedAt": "2026-06-18T17:40:03.197Z"
+    }
+  ]
+}

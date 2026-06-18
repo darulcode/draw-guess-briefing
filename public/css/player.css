@@ -1,0 +1,8 @@
+.player-page { width: min(820px, calc(100% - 22px)); }
+.player-card { padding: clamp(16px, 4vw, 30px); }
+.player-canvas { aspect-ratio: 4/3; }
+.score-badge { padding: 8px 12px; border: 2px solid var(--ink); border-radius: 12px; background: var(--yellow); box-shadow: 4px 4px 0 var(--ink); font: 700 1rem 'Fredoka'; }
+.waiting-names { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
+.waiting-name { padding: 8px 12px; border-radius: 999px; background: #ebe8ff; font-weight: 700; animation: slide-in .35s both; }
+.guess-panel { margin-top: 17px; }
+.role-banner { padding: 10px 14px; margin-bottom: 14px; border-radius: 13px; background: #ebe8ff; color: var(--purple-dark); font-weight: 800; text-align: center; }

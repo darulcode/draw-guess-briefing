@@ -1,0 +1,22 @@
+body.screen-body { background: radial-gradient(circle at 15% 10%, #41d7e7 0%, transparent 28%), radial-gradient(circle at 87% 8%, #ffd84d 0%, transparent 22%), linear-gradient(145deg, #7156f3, #24174e 68%); }
+.screen-page { width: min(1500px, calc(100% - 48px)); padding: 28px 0; }
+.screen-topbar { display: flex; justify-content: space-between; align-items: center; color: white; margin-bottom: 18px; }
+.screen-title { font-size: clamp(1.5rem, 3vw, 2.7rem); margin: 0; }
+.screen-canvas { aspect-ratio: 16/8.5; max-height: 68vh; }
+.screen-waiting { display: grid; grid-template-columns: .75fr 1.25fr; gap: 40px; align-items: center; min-height: 75vh; }
+.screen-room-code { color: white; font: 700 clamp(4rem, 11vw, 10rem) 'Fredoka'; letter-spacing: .11em; line-height: 1; }
+.screen-participants { display: flex; flex-wrap: wrap; gap: 12px; }
+.screen-participant { padding: 11px 16px; border: 2px solid var(--ink); border-radius: 13px; background: var(--paper); box-shadow: 4px 5px 0 var(--ink); font: 600 clamp(.9rem, 2vw, 1.3rem) 'Fredoka'; animation: slide-in .4s both; }
+.screen-game-grid { display: grid; grid-template-columns: minmax(0, 1fr) 240px; gap: 22px; }
+.screen-side { display: grid; align-content: start; gap: 15px; }
+.screen-metric { padding: 20px; border: 2px solid rgba(255,255,255,.24); border-radius: 20px; color: white; background: rgba(23,21,43,.5); }
+.screen-metric span { display: block; color: rgba(255,255,255,.65); font-weight: 700; }
+.screen-metric strong { display: block; margin-top: 5px; font: 700 clamp(2rem, 5vw, 4rem) 'Fredoka'; }
+.screen-result { width: min(1000px, 100%); margin: 0 auto; }
+.screen-body .podium-title, .screen-body .podium-name { color: white; }
+
+@media (max-width: 850px) {
+  .screen-page { width: min(100% - 22px, 1500px); }
+  .screen-waiting, .screen-game-grid { grid-template-columns: 1fr; }
+  .screen-side { grid-template-columns: repeat(3, 1fr); }
+}
