@@ -10,9 +10,13 @@
     <nav class="topbar"><a class="brand" href="/"><span class="brand-mark">D!</span> Draw & Guess</a><span class="eyebrow">Quick Match</span></nav>
     <section class="card matchmaking-card center">
       <div class="matchmaking-orbit" aria-hidden="true"><span></span><span></span><span></span></div>
-      <span class="eyebrow">Mencari arena publik</span>
-      <h1 id="matchTitle">Mencari pemain...</h1>
-      <p id="matchStatus" class="muted">Kami akan memasukkanmu ke room yang tersedia atau membuat room baru.</p>
+      <span class="eyebrow">Arena publik tanpa host</span>
+      <h1 id="matchTitle">Siapa namamu?</h1>
+      <p id="matchStatus" class="muted">Masukkan username, lalu kami akan mencarikan room yang tersedia.</p>
+      <form id="quickMatchForm" class="matchmaking-form">
+        <input id="quickMatchName" class="input" minlength="2" maxlength="20" autocomplete="nickname" placeholder="Username" aria-label="Username" required>
+        <button id="quickMatchButton" class="btn" type="submit">Cari Match</button>
+      </form>
       <button id="retryMatch" class="btn secondary hidden" type="button">Coba Lagi</button>
     </section>
   </main>

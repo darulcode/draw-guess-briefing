@@ -17,7 +17,7 @@ Login dan signup menggunakan email/password langsung tersedia. Password disimpan
 
 ## Quick Match Publik
 
-Pengguna yang sudah login dapat menekan **Quick Match** dari landing page. Server akan memilih room publik yang paling terisi atau membuat room baru bila tidak ada tempat yang tersedia.
+Siapa pun dapat menekan **Quick Match** dari landing page tanpa login. Pemain cukup memasukkan username, lalu server memilih room publik yang paling terisi atau membuat room baru bila tidak ada tempat yang tersedia.
 
 - Game dimulai otomatis saat minimal 4 pemain online.
 - Penggambar dipilih acak dan kata selalu berasal dari `data/words.json`.
@@ -52,7 +52,7 @@ Nilai `GOOGLE_CALLBACK_URL` harus sama persis dengan redirect URI di Google Clou
 
 ## Alur Penggunaan
 
-1. Login atau buat akun, lalu pilih **Quick Match** atau buka `/admin` untuk membuat room privat.
+1. Pilih **Quick Match** dan masukkan username tanpa login, atau login lalu buka `/admin` untuk membuat room privat.
 2. Setelah room dibuat, browser langsung masuk ke layar Host + Projector.
 3. Bagikan QR, Room ID, atau salin link dari layar tersebut.
 4. Tekan **Start Ronde**. Server mengambil kata dari word bank dan menentukan penggambar sesuai mode room.

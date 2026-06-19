@@ -39,20 +39,6 @@ function waitForState(socket, status, timeout = 2500) {
   });
 }
 
-async function signup(url, index) {
-  const response = await fetch(`${url}/api/auth/signup`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      displayName: `Pemain ${index}`,
-      email: `pemain${index}@example.com`,
-      password: 'password-test'
-    })
-  });
-  assert.equal(response.status, 201);
-  return response.headers.get('set-cookie').split(';')[0];
-}
-
 test('Quick Match tanpa host mengantrekan pemain baru hingga ronde berikutnya', { timeout: 20000 }, async (context) => {
   const temp = await fs.mkdtemp(path.join(os.tmpdir(), 'draw-guess-public-'));
   const dbPath = path.join(temp, 'db.json');
@@ -76,23 +62,18 @@ test('Quick Match tanpa host mengantrekan pemain baru hingga ronde berikutnya', 
     await fs.rm(temp, { recursive: true, force: true });
   });
 
-  const protectedPage = await fetch(`${url}/quick-match`, { redirect: 'manual' });
-  assert.equal(protectedPage.status, 302);
-  assert.match(protectedPage.headers.get('location'), /^\/login\?next=/);
+  const quickMatchPage = await fetch(`${url}/quick-match`);
+  assert.equal(quickMatchPage.status, 200);
+  assert.match(await quickMatchPage.text(), /Arena publik tanpa host/);
 
   const guest = await connect(url); clients.push(guest);
   assert.equal((await emitAck(guest, 'public:quick-match')).ok, false);
 
-  const cookies = [];
-  for (let index = 1; index <= 5; index += 1) cookies.push(await signup(url, index));
-  const quickMatchPage = await fetch(`${url}/quick-match`, { headers: { Cookie: cookies[0] } });
-  assert.equal(quickMatchPage.status, 200);
-  assert.match(await quickMatchPage.text(), /Mencari arena publik/);
-  for (const cookie of cookies) clients.push(await connect(url, cookie));
+  for (let index = 1; index <= 5; index += 1) clients.push(await connect(url));
   const players = [];
 
   for (let index = 0; index < 3; index += 1) {
-    const matched = await emitAck(clients[index + 1], 'public:quick-match');
+    const matched = await emitAck(clients[index + 1], 'public:quick-match', { name: `Pemain ${index + 1}` });
     assert.equal(matched.ok, true);
     assert.equal(matched.data.state.status, 'waiting');
     players.push(matched.data);
@@ -100,7 +81,7 @@ test('Quick Match tanpa host mengantrekan pemain baru hingga ronde berikutnya', 
   assert.equal(new Set(players.map((player) => player.roomId)).size, 1);
 
   const firstDrawing = clients.slice(1, 5).map((client) => waitForState(client, 'drawing'));
-  const fourth = await emitAck(clients[4], 'public:quick-match');
+  const fourth = await emitAck(clients[4], 'public:quick-match', { name: 'Pemain 4' });
   players.push(fourth.data);
   const roomId = fourth.data.roomId;
   assert.equal(fourth.ok, true);
@@ -114,7 +95,7 @@ test('Quick Match tanpa host mengantrekan pemain baru hingga ronde berikutnya', 
   assert.equal(drawingStates.filter((state) => state.me.isDrawer).length, 1);
   assert.equal(drawingStates.filter((state) => 'leaderboard' in state).length, 0);
 
-  const fifth = await emitAck(clients[5], 'public:quick-match');
+  const fifth = await emitAck(clients[5], 'public:quick-match', { name: 'Pemain 5' });
   players.push(fifth.data);
   assert.equal(fifth.data.roomId, roomId);
   assert.equal(fifth.data.state.status, 'drawing');

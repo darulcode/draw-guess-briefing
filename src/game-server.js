@@ -177,7 +177,7 @@ async function createGameServer(options = {}) {
   app.get('/login', (req, res) => req.authUser ? res.redirect(safeNextPath(req.query.next)) : view('login.html')(req, res));
   app.get('/signup', (req, res) => req.authUser ? res.redirect(safeNextPath(req.query.next)) : view('signup.html')(req, res));
   app.get('/account', requireUser, view('account.html'));
-  app.get('/quick-match', requireUser, view('quick-match.html'));
+  app.get('/quick-match', view('quick-match.html'));
   app.get('/admin', requireUser, view('admin.html'));
   app.get('/admin/room/:roomId', (req, res) => res.redirect(`/screen/${req.params.roomId}`));
   app.get('/join/:roomId', view('join.html'));
@@ -305,9 +305,8 @@ async function createGameServer(options = {}) {
       .sort((left, right) => right.online - left.online || left.room.createdAt.localeCompare(right.room.createdAt))[0]?.room || null;
   }
 
-  function uniquePublicName(user, room) {
-    const source = String(user.displayName || user.email?.split('@')[0] || 'Pemain').trim().replace(/\s+/g, ' ');
-    const base = (source || 'Pemain').slice(0, 20);
+  function uniquePublicName(name, room) {
+    const base = String(name || 'Pemain').trim().replace(/\s+/g, ' ').slice(0, 20);
     const names = new Set(store.roomPlayers(room.id).map((player) => normalizeAnswer(player.name)));
     if (!names.has(normalizeAnswer(base))) return base;
     for (let suffix = 2; suffix < 1000; suffix += 1) {
@@ -745,49 +744,24 @@ async function createGameServer(options = {}) {
       return acknowledge(ack, { ok: true, data: { isHost: true } });
     });
 
-    socket.on('public:quick-match', async (_payload = {}, ack) => {
+    socket.on('public:quick-match', async (payload = {}, ack) => {
       try {
-        const user = store.data.users.find((item) => item.id === socket.data.authUserId);
-        if (!user) return acknowledge(ack, { ok: false, error: 'Silakan login untuk bermain Quick Match.' });
-
-        let player = store.data.players
-          .filter((item) => item.userId === user.id && store.room(item.roomId)?.isPublic)
-          .sort((left, right) => right.joinedAt.localeCompare(left.joinedAt))[0];
-        let room = player ? store.room(player.roomId) : null;
-        if (!room) {
-          room = publicMatchRoom() || createPublicRoom();
-          const playerToken = nanoid(32);
-          player = {
-            id: `player_${nanoid(10)}`,
-            roomId: room.id,
-            userId: user.id,
-            name: uniquePublicName(user, room),
-            score: 0,
-            isOnline: true,
-            socketId: socket.id,
-            sessionTokenHash: hashToken(playerToken),
-            joinedAt: new Date().toISOString()
-          };
-          store.data.players.push(player);
-          attachSocket(socket, 'player', room.id, player.id);
-          await store.save();
-          await maybeStartPublicRoom(room);
-          const data = {
-            roomId: room.id,
-            playerId: player.id,
-            playerToken,
-            state: playerState(room, player),
-            canvasHistory: canvasHistory.get(room.id) || []
-          };
-          acknowledge(ack, { ok: true, data });
-          await broadcastRoom(room.id);
-          return;
-        }
-
+        const checked = validateName(payload.name);
+        if (!checked.ok) return acknowledge(ack, { ok: false, error: checked.error });
+        const room = publicMatchRoom() || createPublicRoom();
         const playerToken = nanoid(32);
-        player.sessionTokenHash = hashToken(playerToken);
-        player.isOnline = true;
-        player.socketId = socket.id;
+        const player = {
+          id: `player_${nanoid(10)}`,
+          roomId: room.id,
+          userId: socket.data.authUserId || null,
+          name: uniquePublicName(checked.name, room),
+          score: 0,
+          isOnline: true,
+          socketId: socket.id,
+          sessionTokenHash: hashToken(playerToken),
+          joinedAt: new Date().toISOString()
+        };
+        store.data.players.push(player);
         attachSocket(socket, 'player', room.id, player.id);
         await store.save();
         await maybeStartPublicRoom(room);
@@ -801,7 +775,6 @@ async function createGameServer(options = {}) {
             canvasHistory: canvasHistory.get(room.id) || []
           }
         });
-        if (player.id === room.drawerId && ['countdown', 'drawing'].includes(room.status)) socket.emit('drawer:secret-word', { word: room.currentWord });
         await broadcastRoom(room.id);
       } catch (error) {
         acknowledge(ack, { ok: false, error: error.message || 'Quick Match gagal dimulai.' });

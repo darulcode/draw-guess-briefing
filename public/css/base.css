@@ -169,6 +169,7 @@ button { border: 0; }
 .matchmaking-page { width: min(680px, calc(100% - 24px)); }
 .matchmaking-card { margin-top: min(12vh, 100px); padding: clamp(38px, 8vw, 76px); overflow: hidden; }
 .matchmaking-card h1 { margin: 18px 0 10px; }
+.matchmaking-form { display: grid; gap: 12px; width: min(100%, 360px); margin: 24px auto 0; }
 .matchmaking-orbit { position: relative; width: 112px; height: 112px; margin: 0 auto 26px; border: 3px dashed var(--purple); border-radius: 50%; animation: match-spin 5s linear infinite; }
 .matchmaking-orbit span { position: absolute; width: 22px; height: 22px; border: 3px solid var(--ink); border-radius: 50%; background: var(--yellow); }
 .matchmaking-orbit span:nth-child(1) { top: -9px; left: 42px; }
