@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Quick Match | Draw & Guess</title>
+  <link rel="stylesheet" href="/public/css/base.css">
+</head>
+<body>
+  <main class="page matchmaking-page">
+    <nav class="topbar"><a class="brand" href="/"><span class="brand-mark">D!</span> Draw & Guess</a><span class="eyebrow">Quick Match</span></nav>
+    <section class="card matchmaking-card center">
+      <div class="matchmaking-orbit" aria-hidden="true"><span></span><span></span><span></span></div>
+      <span class="eyebrow">Mencari arena publik</span>
+      <h1 id="matchTitle">Mencari pemain...</h1>
+      <p id="matchStatus" class="muted">Kami akan memasukkanmu ke room yang tersedia atau membuat room baru.</p>
+      <button id="retryMatch" class="btn secondary hidden" type="button">Coba Lagi</button>
+    </section>
+  </main>
+  <div id="toast" class="toast"></div>
+  <script src="/socket.io/socket.io.js"></script><script src="/public/js/common.js"></script><script src="/public/js/quick-match.js"></script>
+</body>
+</html>

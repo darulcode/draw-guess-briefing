@@ -61,6 +61,12 @@ async function createGameServer(options = {}) {
   const port = Number(options.port ?? process.env.PORT ?? 3000);
   const countdownMs = Number(options.countdownMs ?? 3000);
   const tickMs = Number(options.tickMs ?? 1000);
+  const publicMinPlayers = Math.max(4, Number(options.publicMinPlayers ?? process.env.PUBLIC_MIN_PLAYERS ?? 4));
+  const publicRoomCapacity = Math.max(publicMinPlayers, Number(options.publicRoomCapacity ?? process.env.PUBLIC_ROOM_CAPACITY ?? 8));
+  const publicMaxRound = Math.min(Math.max(Number(options.publicMaxRound ?? process.env.PUBLIC_MAX_ROUND ?? 5), 1), 20);
+  const publicRoundDuration = Math.min(Math.max(Number(options.publicRoundDuration ?? process.env.PUBLIC_ROUND_DURATION ?? 60), 15), 300);
+  const publicResultMs = Math.max(0, Number(options.publicResultMs ?? process.env.PUBLIC_RESULT_MS ?? 7000));
+  const publicFinalMs = Math.max(0, Number(options.publicFinalMs ?? process.env.PUBLIC_FINAL_MS ?? 12000));
   const store = await new JsonStore(options.dbPath || process.env.DB_PATH || path.join(root, 'data', 'db.json')).init();
   const auth = new AuthService({
     store,
@@ -77,6 +83,13 @@ async function createGameServer(options = {}) {
     if (!room.drawerMode) { room.drawerMode = 'manual'; migratedRooms = true; }
     if (!room.adminPinHash) { room.adminPinHash = hashToken('1234'); migratedRooms = true; }
     if (!Array.isArray(room.usedWords)) { room.usedWords = []; migratedRooms = true; }
+    if (typeof room.isPublic !== 'boolean') { room.isPublic = false; migratedRooms = true; }
+  }
+  for (const player of store.data.players) {
+    if (!player.isOnline && !player.socketId) continue;
+    player.isOnline = false;
+    player.socketId = null;
+    migratedRooms = true;
   }
   if (migratedRooms) await store.save();
   const app = express();
@@ -164,6 +177,7 @@ async function createGameServer(options = {}) {
   app.get('/login', (req, res) => req.authUser ? res.redirect(safeNextPath(req.query.next)) : view('login.html')(req, res));
   app.get('/signup', (req, res) => req.authUser ? res.redirect(safeNextPath(req.query.next)) : view('signup.html')(req, res));
   app.get('/account', requireUser, view('account.html'));
+  app.get('/quick-match', requireUser, view('quick-match.html'));
   app.get('/admin', requireUser, view('admin.html'));
   app.get('/admin/room/:roomId', (req, res) => res.redirect(`/screen/${req.params.roomId}`));
   app.get('/join/:roomId', view('join.html'));
@@ -255,6 +269,63 @@ async function createGameServer(options = {}) {
     return word;
   }
 
+  function createPublicRoom() {
+    const room = {
+      id: createRoomId(store),
+      name: 'Quick Match',
+      status: 'waiting',
+      currentRound: 0,
+      maxRound: publicMaxRound,
+      duration: publicRoundDuration,
+      drawerMode: 'manual',
+      isPublic: true,
+      minPlayers: publicMinPlayers,
+      capacity: publicRoomCapacity,
+      adminPinHash: null,
+      usedWords: [],
+      lastDrawerId: null,
+      currentWord: null,
+      drawerId: null,
+      startedAt: null,
+      endsAt: null,
+      countdownEndsAt: null,
+      hostTokenHash: null,
+      ownerUserId: null,
+      createdAt: new Date().toISOString()
+    };
+    store.data.rooms.push(room);
+    return room;
+  }
+
+  function publicMatchRoom() {
+    return store.data.rooms
+      .filter((room) => room.isPublic && room.status !== 'finished')
+      .map((room) => ({ room, online: store.roomPlayers(room.id).filter((player) => player.isOnline).length }))
+      .filter((entry) => entry.online < (entry.room.capacity || publicRoomCapacity))
+      .sort((left, right) => right.online - left.online || left.room.createdAt.localeCompare(right.room.createdAt))[0]?.room || null;
+  }
+
+  function uniquePublicName(user, room) {
+    const source = String(user.displayName || user.email?.split('@')[0] || 'Pemain').trim().replace(/\s+/g, ' ');
+    const base = (source || 'Pemain').slice(0, 20);
+    const names = new Set(store.roomPlayers(room.id).map((player) => normalizeAnswer(player.name)));
+    if (!names.has(normalizeAnswer(base))) return base;
+    for (let suffix = 2; suffix < 1000; suffix += 1) {
+      const ending = ` ${suffix}`;
+      const candidate = `${base.slice(0, 20 - ending.length)}${ending}`;
+      if (!names.has(normalizeAnswer(candidate))) return candidate;
+    }
+    return `Pemain ${nanoid(6)}`;
+  }
+
+  async function maybeStartPublicRoom(room) {
+    if (!room?.isPublic || room.status !== 'waiting') return false;
+    const onlineCount = store.roomPlayers(room.id).filter((player) => player.isOnline).length;
+    if (onlineCount < (room.minPlayers || publicMinPlayers)) return false;
+    const result = await startCountdown(room);
+    return result.ok;
+  }
+
   function roomResult(room) {
     const round = store.currentRound(room);
     if (!round) return null;
@@ -282,6 +353,7 @@ async function createGameServer(options = {}) {
 
   function sharedState(room) {
     const players = store.roomPlayers(room.id);
+    const onlinePlayers = players.filter((player) => player.isOnline);
     const drawer = players.find((player) => player.id === room.drawerId);
     return {
       id: room.id,
@@ -291,10 +363,13 @@ async function createGameServer(options = {}) {
       maxRound: room.maxRound,
       duration: room.duration,
       drawerMode: room.drawerMode,
+      isPublic: Boolean(room.isPublic),
+      minPlayers: room.isPublic ? (room.minPlayers || publicMinPlayers) : undefined,
+      capacity: room.isPublic ? (room.capacity || publicRoomCapacity) : undefined,
       countdownEndsAt: room.countdownEndsAt,
       endsAt: room.endsAt,
       drawer: drawer ? publicPlayer(drawer) : null,
-      playerCount: players.length
+      playerCount: room.isPublic ? onlinePlayers.length : players.length
     };
   }
 
@@ -325,6 +400,7 @@ async function createGameServer(options = {}) {
 
   function playerState(room, player) {
     const players = store.roomPlayers(room.id);
+    const visiblePlayers = room.isPublic ? players.filter((item) => item.isOnline) : players;
     const currentAnswers = room.currentRound ? store.roundAnswers(room.id, room.currentRound) : [];
     const round = store.currentRound(room);
     const eligibleGuesserIds = round?.eligibleGuesserIds || players.filter((item) => item.id !== room.drawerId).map((item) => item.id);
@@ -333,8 +409,14 @@ async function createGameServer(options = {}) {
     const showResults = room.status === 'round_result' || room.status === 'finished';
     return {
       ...sharedState(room),
-      players: room.status === 'waiting' ? players.map((item) => publicPlayer(item)) : undefined,
-      me: { ...publicPlayer(player, true), isDrawer: player.id === room.drawerId, isEligibleGuesser, hasCorrect },
+      players: room.status === 'waiting' ? visiblePlayers.map((item) => publicPlayer(item)) : undefined,
+      me: {
+        ...publicPlayer(player, true),
+        isDrawer: player.id === room.drawerId,
+        isEligibleGuesser,
+        hasCorrect,
+        matchStatus: ['countdown', 'drawing'].includes(room.status) && player.id !== room.drawerId && !isEligibleGuesser ? 'queued' : 'active'
+      },
       canGuess: room.status === 'drawing' && isEligibleGuesser && player.id !== room.drawerId && !hasCorrect,
       result: showResults ? roomResult(room) : null,
       leaderboard: showResults ? leaderboard(players) : undefined
@@ -394,7 +476,8 @@ async function createGameServer(options = {}) {
       return { ok: false, error: 'Ronde belum dapat dimulai.' };
     }
     const onlinePlayers = store.roomPlayers(room.id).filter((player) => player.isOnline);
-    if (onlinePlayers.length < 2) return { ok: false, error: 'Minimal 2 peserta online untuk memulai.' };
+    const minimum = room.isPublic ? (room.minPlayers || publicMinPlayers) : 2;
+    if (onlinePlayers.length < minimum) return { ok: false, error: `Minimal ${minimum} peserta online untuk memulai.` };
     const drawer = selectDrawer(onlinePlayers, room.drawerMode, room.lastDrawerId);
     if (!drawer && room.drawerMode === 'admin') {
       return { ok: false, error: 'Mode Admin membutuhkan peserta online dengan username admin.' };
@@ -405,6 +488,7 @@ async function createGameServer(options = {}) {
     const word = takeWordFromBank(room);
     if (!word) return { ok: false, error: 'Word bank kosong.' };
 
+    clearRuntime(room.id);
     room.status = 'countdown';
     room.currentRound += 1;
     room.drawerId = drawer.id;
@@ -467,6 +551,71 @@ async function createGameServer(options = {}) {
     await broadcastRoom(roomId);
   }
 
+  function schedulePublicAdvance(roomId, delay = publicResultMs) {
+    clearRuntime(roomId);
+    const phaseTimer = setTimeout(() => advancePublicRoom(roomId), delay);
+    runtime.set(roomId, { phaseTimer, ticker: null });
+  }
+
+  function schedulePublicReset(roomId) {
+    clearRuntime(roomId);
+    const phaseTimer = setTimeout(() => resetPublicMatch(roomId), publicFinalMs);
+    runtime.set(roomId, { phaseTimer, ticker: null });
+  }
+
+  async function advancePublicRoom(roomId) {
+    const room = store.room(roomId);
+    if (!room?.isPublic || room.status !== 'round_result') return;
+    clearRuntime(roomId);
+    if (room.currentRound >= room.maxRound) {
+      room.status = 'finished';
+      room.currentWord = null;
+      room.drawerId = null;
+      await store.save();
+      io.to(`room:${room.id}`).emit('game:finished');
+      await broadcastRoom(room.id);
+      schedulePublicReset(room.id);
+      return;
+    }
+
+    const onlineCount = store.roomPlayers(room.id).filter((player) => player.isOnline).length;
+    if (onlineCount >= (room.minPlayers || publicMinPlayers)) {
+      await startCountdown(room);
+      return;
+    }
+
+    room.status = 'waiting';
+    room.currentWord = null;
+    room.drawerId = null;
+    await store.save();
+    await broadcastRoom(room.id);
+  }
+
+  async function resetPublicMatch(roomId) {
+    const room = store.room(roomId);
+    if (!room?.isPublic || room.status !== 'finished') return;
+    clearRuntime(roomId);
+    room.status = 'waiting';
+    room.currentRound = 0;
+    room.currentWord = null;
+    room.drawerId = null;
+    room.startedAt = null;
+    room.endsAt = null;
+    room.countdownEndsAt = null;
+    room.usedWords = [];
+    room.lastDrawerId = null;
+    for (const player of store.roomPlayers(room.id)) player.score = 0;
+    store.data.rounds = store.data.rounds.filter((round) => round.roomId !== room.id);
+    store.data.answers = store.data.answers.filter((answer) => answer.roomId !== room.id);
+    canvasHistory.set(room.id, []);
+    await store.save();
+    io.to(`room:${room.id}`).emit('canvas:clear');
+    await broadcastRoom(room.id);
+    if (store.roomPlayers(room.id).filter((player) => player.isOnline).length >= (room.minPlayers || publicMinPlayers)) {
+      await startCountdown(room);
+    }
+  }
+
   async function endRound(roomId, roundStatus = 'finished') {
     const room = store.room(roomId);
     if (!room || !['countdown', 'drawing'].includes(room.status)) return false;
@@ -504,12 +653,13 @@ async function createGameServer(options = {}) {
     await store.save();
     io.to(`room:${roomId}`).emit('game:round-ended', { roundNumber: room.currentRound, status: roundStatus });
     await broadcastRoom(roomId);
+    if (room.isPublic) schedulePublicAdvance(room.id);
     return true;
   }
 
   function authHost(roomId, token, adminPin) {
     const room = store.room(roomId);
-    return room && (safeTokenEquals(token, room.hostTokenHash) || safeTokenEquals(adminPin, room.adminPinHash)) ? room : null;
+    return room && !room.isPublic && (safeTokenEquals(token, room.hostTokenHash) || safeTokenEquals(adminPin, room.adminPinHash)) ? room : null;
   }
 
   function authPlayer(roomId, playerId, token) {
@@ -548,6 +698,7 @@ async function createGameServer(options = {}) {
           maxRound,
           duration,
           drawerMode,
+          isPublic: false,
           adminPinHash: hashToken(adminPin),
           usedWords: [],
           lastDrawerId: null,
@@ -594,9 +745,73 @@ async function createGameServer(options = {}) {
       return acknowledge(ack, { ok: true, data: { isHost: true } });
     });
 
+    socket.on('public:quick-match', async (_payload = {}, ack) => {
+      try {
+        const user = store.data.users.find((item) => item.id === socket.data.authUserId);
+        if (!user) return acknowledge(ack, { ok: false, error: 'Silakan login untuk bermain Quick Match.' });
+
+        let player = store.data.players
+          .filter((item) => item.userId === user.id && store.room(item.roomId)?.isPublic)
+          .sort((left, right) => right.joinedAt.localeCompare(left.joinedAt))[0];
+        let room = player ? store.room(player.roomId) : null;
+        if (!room) {
+          room = publicMatchRoom() || createPublicRoom();
+          const playerToken = nanoid(32);
+          player = {
+            id: `player_${nanoid(10)}`,
+            roomId: room.id,
+            userId: user.id,
+            name: uniquePublicName(user, room),
+            score: 0,
+            isOnline: true,
+            socketId: socket.id,
+            sessionTokenHash: hashToken(playerToken),
+            joinedAt: new Date().toISOString()
+          };
+          store.data.players.push(player);
+          attachSocket(socket, 'player', room.id, player.id);
+          await store.save();
+          await maybeStartPublicRoom(room);
+          const data = {
+            roomId: room.id,
+            playerId: player.id,
+            playerToken,
+            state: playerState(room, player),
+            canvasHistory: canvasHistory.get(room.id) || []
+          };
+          acknowledge(ack, { ok: true, data });
+          await broadcastRoom(room.id);
+          return;
+        }
+
+        const playerToken = nanoid(32);
+        player.sessionTokenHash = hashToken(playerToken);
+        player.isOnline = true;
+        player.socketId = socket.id;
+        attachSocket(socket, 'player', room.id, player.id);
+        await store.save();
+        await maybeStartPublicRoom(room);
+        acknowledge(ack, {
+          ok: true,
+          data: {
+            roomId: room.id,
+            playerId: player.id,
+            playerToken,
+            state: playerState(room, player),
+            canvasHistory: canvasHistory.get(room.id) || []
+          }
+        });
+        if (player.id === room.drawerId && ['countdown', 'drawing'].includes(room.status)) socket.emit('drawer:secret-word', { word: room.currentWord });
+        await broadcastRoom(room.id);
+      } catch (error) {
+        acknowledge(ack, { ok: false, error: error.message || 'Quick Match gagal dimulai.' });
+      }
+    });
+
     socket.on('player:join', async (payload = {}, ack) => {
       const room = store.room(payload.roomId);
       if (!room) return acknowledge(ack, { ok: false, error: 'Room tidak ditemukan.' });
+      if (room.isPublic) return acknowledge(ack, { ok: false, error: 'Room publik hanya dapat dimasuki melalui Quick Match.' });
       if (room.status === 'finished') return acknowledge(ack, { ok: false, error: 'Game sudah selesai.' });
       const checked = validateName(payload.name);
       if (!checked.ok) return acknowledge(ack, { ok: false, error: checked.error });
@@ -635,6 +850,7 @@ async function createGameServer(options = {}) {
       acknowledge(ack, { ok: true, data: { state: playerState(room, player), canvasHistory: canvasHistory.get(room.id) || [] } });
       if (player.id === room.drawerId && ['countdown', 'drawing'].includes(room.status)) socket.emit('drawer:secret-word', { word: room.currentWord });
       await broadcastRoom(room.id);
+      await maybeStartPublicRoom(room);
     });
 
     socket.on('admin:start-countdown', async (payload = {}, ack) => {
@@ -818,6 +1034,11 @@ async function createGameServer(options = {}) {
     recovered = true;
   }
   if (recovered) await store.save();
+  for (const room of store.data.rooms) {
+    if (!room.isPublic) continue;
+    if (room.status === 'round_result') schedulePublicAdvance(room.id);
+    if (room.status === 'finished') schedulePublicReset(room.id);
+  }
 
   return {
     app,

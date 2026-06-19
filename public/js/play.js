@@ -26,7 +26,11 @@ function render(next) {
   stopTimer(); stopCountdown();
   if (state.status === 'waiting') {
     show('waitingView'); canvas.setEnabled(false); secret = '';
-    document.getElementById('gameTitle').textContent = 'Room sedang bersiap';
+    document.getElementById('gameTitle').textContent = state.isPublic ? 'Lobby Quick Match' : 'Room sedang bersiap';
+    document.getElementById('waitingTitle').textContent = state.isPublic ? `${state.playerCount}/${state.minPlayers} pemain siap` : 'Room sedang bersiap';
+    document.getElementById('waitingDescription').textContent = state.isPublic
+      ? `Game mulai otomatis setelah minimal ${state.minPlayers} pemain online.`
+      : 'Tunggu host menekan Start. Penggambar dan kata akan dipilih otomatis.';
     document.getElementById('waitingNames').innerHTML = (state.players || []).map((player) => `<span class="waiting-name">${GameUI.escapeHtml(player.name)}</span>`).join('');
     document.getElementById('playerTimer').textContent = '--:--';
     document.getElementById('guessInput').disabled = false;
@@ -59,13 +63,13 @@ function render(next) {
   } else if (state.status === 'round_result') {
     show('resultView'); canvas.setEnabled(false); secret = '';
     document.getElementById('gameTitle').textContent = 'Ronde selesai';
-    document.getElementById('resultView').innerHTML = GameUI.resultHtml(state);
+    document.getElementById('resultView').innerHTML = `${GameUI.resultHtml(state)}${state.isPublic ? '<p class="muted public-next-message">Ronde berikutnya dimulai otomatis. Pemain baru akan ikut bermain.</p>' : ''}`;
     document.getElementById('playerTimer').textContent = '--:--';
     if (previousStatus !== 'round_result') Confetti.burst(1300, 65);
   } else if (state.status === 'finished') {
     show('finalView'); canvas.setEnabled(false);
     document.getElementById('gameTitle').textContent = 'Game selesai';
-    document.getElementById('finalView').innerHTML = GameUI.podiumHtml(state.leaderboard);
+    document.getElementById('finalView').innerHTML = `${GameUI.podiumHtml(state.leaderboard)}${state.isPublic ? '<p class="muted public-next-message">Match baru akan disiapkan otomatis.</p>' : ''}`;
     document.getElementById('playerTimer').textContent = '--:--';
     if (previousStatus !== 'finished') Confetti.burst(3500, 220);
   }

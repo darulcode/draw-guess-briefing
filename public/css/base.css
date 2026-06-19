@@ -166,6 +166,15 @@ button { border: 0; }
 .toast.show { transform: translateY(0); opacity: 1; }
 .toast.error { background: var(--red); }
 .hidden { display: none !important; }
+.matchmaking-page { width: min(680px, calc(100% - 24px)); }
+.matchmaking-card { margin-top: min(12vh, 100px); padding: clamp(38px, 8vw, 76px); overflow: hidden; }
+.matchmaking-card h1 { margin: 18px 0 10px; }
+.matchmaking-orbit { position: relative; width: 112px; height: 112px; margin: 0 auto 26px; border: 3px dashed var(--purple); border-radius: 50%; animation: match-spin 5s linear infinite; }
+.matchmaking-orbit span { position: absolute; width: 22px; height: 22px; border: 3px solid var(--ink); border-radius: 50%; background: var(--yellow); }
+.matchmaking-orbit span:nth-child(1) { top: -9px; left: 42px; }
+.matchmaking-orbit span:nth-child(2) { right: -6px; bottom: 14px; background: var(--pink); }
+.matchmaking-orbit span:nth-child(3) { left: -6px; bottom: 14px; background: var(--cyan); }
+.public-next-message { margin: 26px 0 0; font-weight: 700; }
 .center { text-align: center; }
 .muted { color: var(--muted); }
 .white { color: white; }
@@ -181,6 +190,7 @@ button { border: 0; }
 @keyframes heartbeat { 50% { transform: scale(1.06); box-shadow: 0 0 0 8px rgba(255,94,113,.2); } }
 @keyframes qr-pulse { 50% { box-shadow: 7px 8px 0 var(--yellow), 0 0 0 13px rgba(255,216,77,.13); } }
 @keyframes drift { to { transform: rotate(35deg) translate(35px, -20px); border-radius: 68% 32% 40% 60%; } }
+@keyframes match-spin { to { transform: rotate(360deg); } }
 
 @media (max-width: 850px) {
   .hero, .grid.admin { grid-template-columns: 1fr; }

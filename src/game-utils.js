@@ -5,7 +5,7 @@ const TRANSITIONS = Object.freeze({
   waiting: ['countdown'],
   countdown: ['drawing', 'round_result'],
   drawing: ['round_result'],
-  round_result: ['countdown', 'finished'],
+  round_result: ['waiting', 'countdown', 'finished'],
   finished: ['waiting']
 });
 

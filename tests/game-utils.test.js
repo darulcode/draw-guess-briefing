@@ -48,7 +48,7 @@ test('state machine hanya menerima transisi yang diizinkan', () => {
   assert.equal(canTransition('waiting', 'countdown'), true);
   assert.equal(canTransition('drawing', 'round_result'), true);
   assert.equal(canTransition('round_result', 'countdown'), true);
-  assert.equal(canTransition('round_result', 'waiting'), false);
+  assert.equal(canTransition('round_result', 'waiting'), true);
   assert.equal(canTransition('drawing', 'finished'), false);
   assert.equal(canTransition('finished', 'waiting'), true);
 });

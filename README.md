@@ -1,6 +1,6 @@
 # Draw & Guess Briefing Game
 
-Game menggambar dan menebak realtime untuk briefing pagi. Host login untuk membuat room, sedangkan peserta tetap dapat bergabung cepat lewat QR atau Room ID tanpa akun.
+Game menggambar dan menebak realtime dengan Quick Match publik tanpa host serta room privat untuk briefing dan permainan bersama teman.
 
 ## Menjalankan
 
@@ -14,6 +14,18 @@ npm start
 Buka `http://localhost:3000`. Server mendengarkan di `0.0.0.0:3000`, sehingga perangkat lain dalam Wi-Fi yang sama dapat membuka alamat IP laptop, misalnya `http://192.168.1.7:3000`.
 
 Login dan signup menggunakan email/password langsung tersedia. Password disimpan sebagai hash dan sesi menggunakan cookie `HttpOnly`.
+
+## Quick Match Publik
+
+Pengguna yang sudah login dapat menekan **Quick Match** dari landing page. Server akan memilih room publik yang paling terisi atau membuat room baru bila tidak ada tempat yang tersedia.
+
+- Game dimulai otomatis saat minimal 4 pemain online.
+- Penggambar dipilih acak dan kata selalu berasal dari `data/words.json`.
+- Pemain yang bergabung ketika ronde berlangsung menjadi penonton sementara, lalu otomatis aktif pada ronde berikutnya.
+- Hasil dan leaderboard terbaru tampil setelah setiap ronde. Server melanjutkan ronde dan menampilkan podium final tanpa kontrol host.
+- Setelah podium, room kembali menjadi lobby dan memulai match baru ketika pemainnya mencukupi.
+
+Nilai default dapat diubah melalui `PUBLIC_MIN_PLAYERS`, `PUBLIC_ROOM_CAPACITY`, `PUBLIC_MAX_ROUND`, `PUBLIC_ROUND_DURATION`, `PUBLIC_RESULT_MS`, dan `PUBLIC_FINAL_MS`. Nilai minimum pemain selalu 4.
 
 Jika QR memilih adaptor jaringan yang salah, gunakan `.env.example` sebagai referensi lalu jalankan dengan environment variable yang sesuai:
 
@@ -40,7 +52,7 @@ Nilai `GOOGLE_CALLBACK_URL` harus sama persis dengan redirect URI di Google Clou
 
 ## Alur Penggunaan
 
-1. Login atau buat akun, lalu buka `/admin` untuk mengisi nama sesi, ronde, durasi, dan mode penggambar.
+1. Login atau buat akun, lalu pilih **Quick Match** atau buka `/admin` untuk membuat room privat.
 2. Setelah room dibuat, browser langsung masuk ke layar Host + Projector.
 3. Bagikan QR, Room ID, atau salin link dari layar tersebut.
 4. Tekan **Start Ronde**. Server mengambil kata dari word bank dan menentukan penggambar sesuai mode room.
